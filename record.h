@@ -2,12 +2,13 @@
 #define __RECORD_H_
 
 #include <stdio.h>  /* FILE */
-
+#include <stdint.h>
+#include <stdlib.h>
 
 struct record {
  uint32_t TYPE : 15, F : 1, LENGTH : 16;
  char *PAYLOAD;
- uint32_t UUID : 32; 
+ uint32_t FOOTER : 32;
 };
 
 

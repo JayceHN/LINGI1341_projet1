@@ -53,7 +53,7 @@ int record_set_payload(struct record *r,
 	r->LENGTH = n;
 
 	/* copy n bytes  from buf to r->PAYLOAD */
-	memcpy(r->PAYLOAD, buf, n)
+	memcpy(r->PAYLOAD, buf, n);
 
 	return 0;
 }
@@ -102,7 +102,7 @@ int record_write(const struct record *r, FILE *f)
 
 	/* Initialize */
 	uint16_t type = record_get_type(r);
-	uint8_t footer = record_get_footer(r);
+	uint8_t footer = record_has_footer(r);
 	uint16_t length = record_get_length(r);
 	uint16_t length_ntw = ntohs(record_get_length(r)); //network byte order to host byte order
 	uint16_t header = 0;
