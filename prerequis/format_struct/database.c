@@ -34,5 +34,18 @@ int main(int argc, const char **argv)
 	 * as an easy way to script a lot of tests.
 	 */
 
+	 FILE *read = fopen("./output","r");
+	 if (!read) return EXIT_FAILURE;
+
+	 FILE *write = fopen("./output_lo","w");
+	 if (!write) return EXIT_FAILURE;
+
+	 while (record_read(&new_record, read) != 0) {
+	 	record_write(&new_record, write);
+	 }
+
+	 fclose(read);
+	 fclose(write);
+
 	return EXIT_SUCCESS;
 }
