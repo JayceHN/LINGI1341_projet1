@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <stddef.h>
 #include <errno.h>
+#include <unistd.h>
 #include "create_socket.h"
 
 /* Creates a socket and initialize it
@@ -52,7 +53,7 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port,
     return -1;
   }
   //@source_addr: if !NULL, the source address that should be bound to this socket
-  if(source_addr){
+  if(source_addr && src_port > 0){
     source_addr->sin6_family = AF_INET6;
     source_addr->sin6_port = htons(src_port);
     /*
@@ -67,13 +68,14 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port,
     */
     bindfd = bind(sockfd, (struct sockaddr *) source_addr, sizeof(struct sockaddr_in6));
     if(bindfd < 0){
+      close(sockfd);
       perror(strerror(errno));
       return -1;
     }
   }
   //@dest_addr: if !NULL, the destination address to which the socket should send data
   //@dst_port: if >0, the destination port to which the socket should be connected
-  if(dest_addr){
+  if(dest_addr && dst_port > 0){
     dest_addr->sin6_port = htons(dst_port);
     /*
     int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
@@ -89,6 +91,7 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port,
     */
     connectfd = connect(sockfd, (struct sockaddr *) dest_addr, sizeof(struct sockaddr_in6));
     if(connectfd < 0){
+      close(sockfd);
       perror(strerror(errno));
       return -1;
     }

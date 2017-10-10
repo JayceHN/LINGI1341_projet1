@@ -53,16 +53,21 @@ See errors for the return value in the man.
  *           so do not use malloc!)
  */
 const char * real_address(const char *address, struct sockaddr_in6 *rval){
-  struct addrinfo fam, *tmp;
+  struct addrinfo hints, *tmp;
 
   // The memset() function fills the first n bytes of the memory area pointed
   // to by s with the constant byte c
-  memset(&fam, 0, sizeof(fam));
+  memset(rval, 0, sizeof(*rval));
   // define family -> IPV6
-  fam.ai_family = AF_INET6;
+  rval->sin6_family = AF_INET6;
+
+
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET6;
+  hints.ai_socktype = SOCK_DGRAM;
 
   // retrieve the address in tmp struct
-  int err = getaddrinfo(address, NULL, &fam, &tmp);
+  int err = getaddrinfo(address, NULL, &hints, &tmp);
   /* addrinfo return 0 on success else an error nbr from these :
     EAI_ADDRFAMILY
     EAI_AGAIN
@@ -77,7 +82,7 @@ const char * real_address(const char *address, struct sockaddr_in6 *rval){
     EAI_SYSTEM
     ->  gai_strerror() to translate
   */
-  if(err != 0) return strerror (err);
+  if(err != 0) return gai_strerror(err);
   /* return the address
   Address format
         struct sockaddr_in6 {

@@ -35,8 +35,6 @@ int wait_for_client(int sfd){
   Additional errors may be generated and returned from the underlying protocol
   modules; see their manual pages.
   */
-  int rc = setsockopts(connectfd, SOL_SOCKET, SO_BINDTODEVICE, "eth0", 4);
-  if(rc < 0) perror(strerror(errno));
   int ret = recvfrom(sfd, buf, sizeof(buf), MSG_PEEK, (struct sockaddr *) &addr, &len);
   if(ret < 0) perror(strerror(errno));
 
