@@ -241,6 +241,66 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
 
 pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 {
+  //check len sufficent
+  if(*len < (4 * sizeof(uint32_t) + pkt_get_length(pkt))){
+    code = E_NOMEM;
+    return code;
+  }
+
+  //init buf
+  memset(buf, 0, *len);
+  //init vars
+  uint32_t header = 0;
+  uint32_t real_header = 0;
+  uint32_t tmp = 0;
+  size_t size = 0;
+
+  uint8_t real_tr = pkt_get_tr(pkt);
+
+  //build header
+  header = (header | pkt_get_type(pkt)) << 29;
+  tmp = 0 << 28;
+  header = (header | tmp);
+  tmp = pkt_get_window(pkt) << 23;
+  header = (header | tmp);
+  tmp = pkt_get_seqnum(pkt) << 15;
+  header = (header | tmp);
+  header = (header | pkt_get_length(pkt));
+  // host -> ntwk
+  header = htonl(header);
+
+  //compute crc
+  uint32_t crc1 = 0;
+  crc1 = crc32(crc1, (Bytef *) &header, sizeof(uint32_t));
+  crc1 = htonl(crc1);
+
+  real_header = (real_tr << 28) | header;
+  memcpy(buf, &real_header, sizeof(uint32_t));
+  size = size + sizeof(uint32_t);
+
+  //timestamp
+  uint32_t timestamp = 0;
+  timestamp = pkt_get_timestamp(pkt);
+  memcpy(buf + size, &timestamp, sizeof(uint32_t));
+  size += sizeof(uint32_t);
+
+  memcpy(buf+size, &crc1, sizeof(uint32_t));
+  size += sizeof(uint32_t);
+
+  if(pkt_get_payload(pkt) != NULL){ // PAYLOAD + CRC2
+    // We add the payload to the buffer
+    memcpy(buf+size, pkt_get_payload(pkt), pkt_get_length(pkt));
+    size = size+pkt_get_length(pkt);	// size of buffer is  increased
+    //crc on buffer
+    uint32_t crc2 = 0;
+    crc2 = crc32(crc2, (Bytef *) pkt_get_payload(pkt), pkt_get_length(pkt));
+    crc2 = htonl(crc2);
+    memcpy(buf+size, &crc2, sizeof(uint32_t));
+    size += sizeof(uint32_t);
+  }
+
+  *len = size;
+
   code = PKT_OK;
   return code;
 }
