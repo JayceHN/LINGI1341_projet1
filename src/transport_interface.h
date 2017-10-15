@@ -17,7 +17,7 @@
 #include <sys/select.h>
 #include <fcntl.h>
 
-#define MAX_PACKET_SIZE 608
+#define MAX_PACKET_SIZE 640
 #define TRUE 1
 #define FALSE 0
 
@@ -65,25 +65,18 @@ void sender_loop(int sfd, struct sockaddr_in6 *dest, const char *fname);
 */
 void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname);
 
-/*
-* comparing time1(0-60) and time2(0-60)
-* returns 0 if the difference is less than 5 seconds
-* returns 1 if the difference is bigger than 5 seconds
-*/
-int checkTime(const int time1, const int time2);
-
 
 /*
 * incrementing the sequence and making sure no overflow occurs
 */
-uint8_t incSeqNum(uint8_t seqnum);
+uint8_t inc_seqnum(uint8_t seqnum);
 
 
 /*
 * comparing two sequence numbers and returning 0 if seqnum1 < seqnum2
 * 1 if seqnum1 = seqnum2 and -1 otherwise
 */
-int compareSeqNum(uint8_t seqnum1, uint8_t seqnum2);
+int compare_seqnum(uint8_t seqnum1, uint8_t seqnum2);
 
 
 #endif

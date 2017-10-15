@@ -22,6 +22,7 @@ typedef enum {
 #define MAX_PAYLOAD_SIZE 512
 /* Taille maximale de Window */
 #define MAX_WINDOW_SIZE 31
+#define WINDOW_SIZE 1
 
 /* Valeur de retours des fonctions */
 typedef enum {
