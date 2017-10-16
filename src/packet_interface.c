@@ -257,11 +257,6 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 
   uint8_t real_tr = pkt_get_tr(pkt);
 
-  uint16_t length = header;
-  uint8_t seqnum = header >> 16;
-  uint8_t window = (header << 2) >> 28;
-  uint8_t tr = (header << 1) >> 29;
-  uint8_t type = header >> 29;
   //build header
   header = (header | pkt_get_type(pkt)) << 29;
   tmp = 0 << 28;
