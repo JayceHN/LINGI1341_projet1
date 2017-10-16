@@ -16,7 +16,7 @@ pkt_status_code code;
 struct __attribute__((__packed__)) pkt
 {
   uint8_t window:5;
-  uint8_t trFlag:1;
+  uint8_t tr:1;
   uint8_t type:2;
   uint8_t seqnum; // [0,255]
   uint16_t length; // [0,512]
@@ -102,8 +102,7 @@ pkt_status_code pkt_set_window(pkt_t *pkt, const uint8_t win)
 		return PKT_OK;
 }
 
-pkt_status_c  memset(buf, 0, *len);
-ode pkt_set_seqnum(pkt_t *pkt, const uint8_t seqnum)
+pkt_status_code pkt_set_seqnum(pkt_t *pkt, const uint8_t seqnum)
 {
 		pkt->seqnum = seqnum;
 		return PKT_OK;
@@ -245,44 +244,46 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
         fprintf(stderr, "Il n'y a pas assez de mémoire disponible.\n");
               return E_NOMEM;
     }
-
-    memcpy(buf, pkt, sizeof(uint8_t));
-
-    //init vars
-    uint32_t header = 0;
-    uint32_t real_header = 0;
-    uint32_t tmp = 0;
     size_t size = 0;
+    uint16_t length = htons(pkt_get_length(pkt));
+    uint32_t timestamp = pkt_get_timestamp(pkt);
+    //pkt_set_length(pkt,htons(pkt_get_length(pkt)));
 
-    uint8_t real_tr = pkt_get_tr(pkt);
+    // win + tr + type + seqnum
+    memcpy(buf+size, pkt, sizeof(uint16_t));
+    size = size + sizeof(uint16_t);
 
-    //build header
-    header = (header | pkt_get_type(pkt)) << 29;
-    tmp = 0 << 28;
-    header = (header | tmp);
-    tmp = pkt_get_window(pkt) << 23;
-    header = (header | tmp);
-    tmp = pkt_get_seqnum(pkt) << 15;
-    header = (header | tmp);
-    header = (header | pkt_get_length(pkt));
-    // host -> ntwk
-    header = htonl(header);
+    memcpy(buf+size, &length, sizeof(uint16_t));
+    size = size + sizeof(uint16_t);
+
+/*
+    //seqnum
+    memcpy(buf+size, pkt + size, sizeof(uint8_t));
+    size = size + sizeof(uint8_t);
+
+    //length
+    memcpy(buf+size, pkt + size, sizeof(uint16_t));
+    size = size + sizeof(uint16_t);
+
+
+    //length last part
+    memcpy(buf, pkt + size + sizeof(uint8_t), sizeof(uint8_t));
+    size = size + sizeof(uint8_t);
+
+    //length first part
+    memcpy(buf, pkt + size - sizeof(uint8_t), sizeof(uint8_t));
+    size = size + sizeof(uint8_t);
+*/
+
+
+    //timestamp
+    memcpy(buf+size, &timestamp, sizeof(uint32_t));
+    size = size + sizeof(uint32_t);
 
     //compute crc
     uint32_t crc1 = 0;
-    crc1 = crc32(crc1, (Bytef *) &header, sizeof(uint32_t));
+    crc1 = crc32(crc1, (Bytef *) pkt, sizeof(uint32_t));
     crc1 = htonl(crc1);
-
-    real_header = (real_tr << 28) | header;
-    memcpy(buf, &real_header, sizeof(uint32_t));
-    size = size + sizeof(uint32_t);
-
-    //timestamp
-    uint32_t timestamp = 0;
-    timestamp = pkt_get_timestamp(pkt);
-    memcpy(buf + size, &timestamp, sizeof(uint32_t));
-    size += sizeof(uint32_t);
-
     memcpy(buf+size, &crc1, sizeof(uint32_t));
     size += sizeof(uint32_t);
 
