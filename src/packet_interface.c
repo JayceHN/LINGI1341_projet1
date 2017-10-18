@@ -152,70 +152,64 @@ pkt_status_code pkt_set_crc2(pkt_t *pkt, const uint32_t crc2)
 pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
 {
   //vars
-  uint32_t header = 0; // 32 first bits (type, window, seqnum, length)
+  uint16_t header_part1 = 0; // 16 first bits (window, tr, type, seqnum)
+  uint16_t length = 0; // 16 next bits (length)
   uint32_t timestamp = 0; // 32 next bits
   uint32_t crc1 = 0; // 32 last bits
   uint32_t crc2 = 0; // 32 last bits
+  uint32_t tmp = 0;
 
   //retrieves the header
-  memcpy(&header, data, sizeof(uint32_t));
-  header = ntohl(header); //ntwrk -> host
+  memcpy(&header_part1, data, sizeof(uint16_t));
+  header_part1 = ntohs(header_part1); //ntwrk -> host
+  memcpy(pkt, &header_part1, sizeof(uint16_t));
 
-  //extract different fields (inversed order)
-  uint16_t length = header;
-  uint8_t seqnum = header >> 16;
-  uint8_t window = (header << 2) >> 28;
-  uint8_t tr = (header << 1) >> 29;
-  uint8_t type = header >> 29;
-  // 0 to 31
+  memcpy(&length, data + sizeof(uint16_t) , sizeof(uint16_t));
+  length = ntohs(length); //ntwrk -> host
+  pkt_set_length(pkt, length);
 
+  memcpy(&timestamp, data + sizeof(uint32_t) , sizeof(uint32_t));
+  timestamp = ntohl(timestamp); //ntwrk -> host
+  pkt_set_timestamp(pkt, timestamp);
+
+  uint8_t tr = pkt_get_tr(pkt);
+  pkt_set_tr(pkt, 0);
   //checking tr bit
-  if(tr > 0 && type != PTYPE_DATA){
+  if(tr > 0 && pkt_get_type(pkt) != PTYPE_DATA){
       fprintf(stderr, "Le tr n'est pas valide.\n");
     return E_TR;
   }
 
   //checking the type
-  if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+  if(pkt_get_type(pkt) != PTYPE_DATA && pkt_get_type(pkt) != PTYPE_ACK
+    && pkt_get_type(pkt) != PTYPE_NACK){
       fprintf(stderr, "Le type n'est pas valide.\n");
     return E_TYPE;
   }
-
-  /* setters */
-  pkt_set_type(pkt, type);
-  pkt_set_tr(pkt, 0); //ignored to compute the crc
-  pkt_set_window(pkt, window);
-  pkt_set_seqnum(pkt, seqnum);
-  pkt_set_length(pkt, length);
 
   int block32 = 3;
   if(tr == 0) block32 ++;
 
   //checking length
-  if(type == PTYPE_DATA &&
-    (  pkt_get_length(pkt) <= 0 || pkt_get_length(pkt) > 512
-    || pkt_get_length(pkt) != len - block32 * sizeof(uint32_t))){
+  if(pkt_get_type(pkt) == PTYPE_DATA &&
+    (  pkt_get_length(pkt) <= 0 || pkt_get_length(pkt) > 512)){
     fprintf(stderr, "La taille n'est pas correcte.\n");
 
     return E_LENGTH;
   }
 
-  //extract timestamp
-  memcpy(&timestamp, data + sizeof(uint32_t), sizeof(uint32_t)); // header already read
-  pkt_set_timestamp(pkt, timestamp);
-
   //extract crc1
-  memcpy(&crc1, data + 2* sizeof(uint32_t), sizeof(uint32_t));
-  crc1 = ntohl(crc1);
-  pkt_set_crc1(pkt, crc1);
+  memcpy(&tmp, data + 2* sizeof(uint32_t), sizeof(uint32_t));
+  tmp = ntohl(tmp);
+  pkt_set_crc1(pkt, tmp);
+  tmp = 0;
+  crc1 = crc32(crc1, (Bytef *) pkt, sizeof(uint32_t) * 2);
 
-  uint32_t crc_tmp = 0;
-  crc_tmp = crc32(crc_tmp, (Bytef *)data, sizeof(uint32_t));
-  if(crc_tmp != pkt_get_crc1(pkt)){
-    fprintf(stderr, "Le crc1 n'est pas valide.\n");
+  if(crc1 != pkt_get_crc1(pkt)){
+    fprintf(stderr, "Le crc1 n'est pas valide, reçu :  %d recalculé : %d\n", pkt_get_crc1(pkt), crc1);
     return E_CRC;
   }
-  crc_tmp = 0;
+
 
   pkt_set_tr(pkt, tr); // real tr read
   //no payload
@@ -224,12 +218,12 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
   }
 
   //extract crc2
-  memcpy(&crc2, data + len - sizeof(uint32_t), sizeof(uint32_t));
+  memcpy(&crc2, data + 2*sizeof(uint32_t) + len , sizeof(uint32_t));
   crc2 = ntohl(crc2);
   pkt_set_crc2(pkt, crc2);
 
-  crc_tmp = crc32(crc_tmp, (Bytef *)data + 3 * sizeof(uint32_t) , pkt_get_length(pkt));
-  if(crc_tmp != pkt_get_crc2(pkt)){
+  tmp = crc32(tmp, (Bytef *)data + 3 * sizeof(uint32_t) , pkt_get_length(pkt));
+  if(tmp != pkt_get_crc2(pkt)){
       fprintf(stderr, "Le crc2 n'est pas valide.\n");
       return E_CRC;
   }
@@ -255,26 +249,6 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 
     memcpy(buf+size, &length, sizeof(uint16_t));
     size = size + sizeof(uint16_t);
-
-/*
-    //seqnum
-    memcpy(buf+size, pkt + size, sizeof(uint8_t));
-    size = size + sizeof(uint8_t);
-
-    //length
-    memcpy(buf+size, pkt + size, sizeof(uint16_t));
-    size = size + sizeof(uint16_t);
-
-
-    //length last part
-    memcpy(buf, pkt + size + sizeof(uint8_t), sizeof(uint8_t));
-    size = size + sizeof(uint8_t);
-
-    //length first part
-    memcpy(buf, pkt + size - sizeof(uint8_t), sizeof(uint8_t));
-    size = size + sizeof(uint8_t);
-*/
-
 
     //timestamp
     memcpy(buf+size, &timestamp, sizeof(uint32_t));
