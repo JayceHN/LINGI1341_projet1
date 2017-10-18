@@ -282,7 +282,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 
     //compute crc
     uint32_t crc1 = 0;
-    crc1 = crc32(crc1, (Bytef *) pkt, sizeof(uint32_t));
+    crc1 = crc32(crc1, (Bytef *) buf, sizeof(uint32_t) * 2);
     crc1 = htonl(crc1);
     memcpy(buf+size, &crc1, sizeof(uint32_t));
     size += sizeof(uint32_t);
