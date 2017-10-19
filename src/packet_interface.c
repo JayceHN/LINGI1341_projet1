@@ -152,25 +152,12 @@ pkt_status_code pkt_set_crc2(pkt_t *pkt, const uint32_t crc2)
 pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
 {
   //vars
-  uint16_t header_part1 = 0; // 16 first bits (window, tr, type, seqnum)
-  uint16_t length = 0; // 16 next bits (length)
-  uint32_t timestamp = 0; // 32 next bits
-  uint32_t crc1 = 0; // 32 last bits
-  uint32_t crc2 = 0; // 32 last bits
+  uint32_t crc1 = crc32(0L, Z_NULL, 0); //Initialisation de crc1
+ 	uint32_t crc2 = crc32(0L, Z_NULL, 0); //Initialisation de rc2
   uint32_t tmp = 0;
 
   //retrieves the header
-  memcpy(&header_part1, data, sizeof(uint16_t));
-  header_part1 = ntohs(header_part1); //ntwrk -> host
-  memcpy(pkt, &header_part1, sizeof(uint16_t));
-
-  memcpy(&length, data + sizeof(uint16_t) , sizeof(uint16_t));
-  length = ntohs(length); //ntwrk -> host
-  pkt_set_length(pkt, length);
-
-  memcpy(&timestamp, data + sizeof(uint32_t) , sizeof(uint32_t));
-  timestamp = ntohl(timestamp); //ntwrk -> host
-  pkt_set_timestamp(pkt, timestamp);
+  memcpy(pkt, data, 3* sizeof(uint32_t));
 
   uint8_t tr = pkt_get_tr(pkt);
   pkt_set_tr(pkt, 0);
@@ -186,11 +173,10 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
       fprintf(stderr, "Le type n'est pas valide.\n");
     return E_TYPE;
   }
-
-  int block32 = 3;
-  if(tr == 0) block32 ++;
-
   //checking length
+  uint16_t length = pkt_get_length(pkt);
+  length = htons(length);
+  pkt_set_length(pkt,length);
   if(pkt_get_type(pkt) == PTYPE_DATA &&
     (  pkt_get_length(pkt) <= 0 || pkt_get_length(pkt) > 512)){
     fprintf(stderr, "La taille n'est pas correcte.\n");
@@ -199,35 +185,34 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
   }
 
   //extract crc1
-  memcpy(&tmp, data + 2* sizeof(uint32_t), sizeof(uint32_t));
-  tmp = ntohl(tmp);
-  pkt_set_crc1(pkt, tmp);
-  tmp = 0;
-  crc1 = crc32(crc1, (Bytef *) pkt, sizeof(uint32_t) * 2);
 
+  crc1 = crc32(crc1, (Bytef *) data, sizeof(uint32_t) * 2);
+  crc1 = htonl(crc1);
   if(crc1 != pkt_get_crc1(pkt)){
     fprintf(stderr, "Le crc1 n'est pas valide, reçu :  %d recalculé : %d\n", pkt_get_crc1(pkt), crc1);
     return E_CRC;
   }
 
-
   pkt_set_tr(pkt, tr); // real tr read
   //no payload
-  if(pkt_get_tr(pkt) > 0){
-    return PKT_OK;
-  }
 
+if (len > 12){//s'il y a un payload
+  //extract payload
+  char * buf = malloc(length);
+  if(!buf) return E_NOMEM;
+  memcpy(buf, data + 3*sizeof(uint32_t) , length);
+  pkt_set_payload(pkt, buf, length);
+  free(buf);
   //extract crc2
-  memcpy(&crc2, data + 2*sizeof(uint32_t) + len , sizeof(uint32_t));
-  crc2 = ntohl(crc2);
+  memcpy(&crc2, data + 3*sizeof(uint32_t) + length , sizeof(uint32_t));
   pkt_set_crc2(pkt, crc2);
-
-  tmp = crc32(tmp, (Bytef *)data + 3 * sizeof(uint32_t) , pkt_get_length(pkt));
+  tmp = crc32(tmp, (Bytef *)data + 3 * sizeof(uint32_t) , length);
+  tmp = htonl(tmp);
   if(tmp != pkt_get_crc2(pkt)){
-      fprintf(stderr, "Le crc2 n'est pas valide.\n");
+      fprintf(stderr, "Le crc2 n'est pas valide, reçu :  %d recalculé : %d\n", pkt_get_crc2(pkt), crc2);
       return E_CRC;
   }
-
+}
   return PKT_OK;
 }
 
