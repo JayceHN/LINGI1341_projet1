@@ -118,14 +118,71 @@ int read_write_loop(int socket_fd, int file_d){
 
       /*
        * Recevoir les données:
-       * - lire les données reçues
-       * - création d'un paquet
-       * - décoder les données reçues
-       * -
        */
+       status = receive_data(socket_fd);
+       if (status < 0){
+           fprintf(stderr, "read_write_loop: la méthode receive_data ne s'est pas exécutée correctement.\n");
+           return status;
+       }
 
     }
     return status;
+
+}
+
+int receive_data(int socket_fd){
+    /*
+     * Recevoir les données:
+     * - lire les données reçues
+     * - création d'un paquet
+     * - décoder les données reçues
+     */
+    //déclaration et initialisaton des variables
+    char buffer[MAX_PACKET_SIZE]; //buffer des données que l'on reçoit
+    size_t data_len; //la taille des données que l'on reçoit
+    fd_set descriptor; //file descriptor de lecture
+    int status=0; //pour mesurer le bon fonctionnement des méthodes
+    pkt_t* pkt = NULL; //le paquet qu'on va recevoir
+
+    FD_ZERO(&descriptor);
+    FD_SET(socket_fd,&descriptor);
+
+
+    // lire les données reçues
+    status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
+    if(status < 0){
+        fprintf(stderr, "receive_data: la méthode select ne s'est pas bien exécutée.\n");
+        return EXIT_FAILURE;
+    }
+    if (FD_ISSET(socket_fd, &descriptor)){
+        data_len = read(socket_fd, buffer, sizeof(buffer));
+    }
+    if (data_len <= 0){
+        fprintf(stderr,"receive_data: on n'a pas lu de données.\n");
+        return EXIT_FAILURE;
+    }
+
+    // création d'un paquet
+    pkt = pkt_new();
+    if (pkt == NULL){
+        fprintf(stderr,"receive_data: la création du paquet s'est mal passée.\n");
+        return EXIT_FAILURE;
+    }
+
+    // décoder les données reçues
+    status = pkt_decode(buffer, data_len, pkt);
+    if(status < 0){
+        fprintf(stderr,"receive_data: il y a eu un problème lors du décodage.\n");
+        return EXIT_FAILURE;
+    }
+    if (pkt->type == PTYPE_ACK){
+        receiver_window = pkt_get_window(pkt);
+        pkt_del(pkt_sent[pkt_get_seqnum(pkt)]->pkt);
+    }
+    else if (pkt->type == PTYPE_NACK){
+
+    }
+    pkt_del(pkt);
 
 }
 
@@ -137,6 +194,7 @@ int send_data(int file_d, int socket_fd){
      * - encoder le paquet
      * - écrire le paquet sur le socket
      * - mettre à jour les informations du sender
+     * - garder en mémoire les paquets qui ont été envoyés
      */
      //déclaration et initialisaton des variables
      char buffer[MAX_PAYLOAD];//buffer de la lecture des données
@@ -147,6 +205,7 @@ int send_data(int file_d, int socket_fd){
      FD_SET(STDIN_FILENO, &descriptor);
      size_t data_len; //taille des données lues et à écrire
      size_t pkt_len = MAX_PACKET_SIZE; // taille du paquet final
+      pkt_t* pkt = NULL;//le paquet qu'on va envoyer
 
      //lecture des données à envoyer
      if (file_d != 0){
@@ -154,7 +213,7 @@ int send_data(int file_d, int socket_fd){
      }
      status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
      if (status < 0){
-         fprintf(stderr,"send_data: la méthode select n'a pas été exéutée jusqu'au bout.\n");
+         fprintf(stderr,"send_data: la méthode select n'a pas été exécutée jusqu'au bout.\n");
          return EXIT_FAILURE;
      }
      //on vérifie si le file descriptor est bien contenu dans un ensemble
@@ -170,7 +229,7 @@ int send_data(int file_d, int socket_fd){
      }
 
      //création et remplissage du paquet
-     pkt_t* pkt = pkt_new();
+    pkt = pkt_new();
      if(pkt == NULL){
          fprintf(stderr,"send_data: la création du paquet s'est mal passé\n");
          return EXIT_FAILURE;
@@ -202,7 +261,10 @@ int send_data(int file_d, int socket_fd){
      seqnum_sent = seqnum_sent++;
      seqnum_sent = seqnum_sent % 255; //on maj le numéro de séquence
 
-
+     //garder en mémoire les paquets envoyés
+     pkt_sent[seqnum_sent] = malloc(sizeof(struct history_pkt_sent));
+     pkt_sent[seqnum_sent]->pkt = pkt;
+     gettimeofday(&(pkt_sent[seqnum_sent]->timer),NULL);
 
 }
 

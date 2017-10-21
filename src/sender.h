@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 
 
@@ -20,8 +21,15 @@ uint8_t sender_window = WINDOW_SIZE;
 uint8_t receiver_window = WINDOW_SIZE;
 uint8_t seqnum_sent = 0;
 
+struct history_pkt_sent{
+  struct timeval timer;
+  pkt_t* pkt;
+};
+
+struct history_pkt_sent* pkt_sent[WINDOW_SIZE];
 
 int read_write_loop(int socket_fd, int file_d);
 int send_data(int file_d, int socket_fd);
+int receive_data(int socket_fd);
 
 #endif
