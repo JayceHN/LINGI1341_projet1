@@ -12,7 +12,16 @@
 
 #define MIN_ARGUMENT 3
 #define MAX_ARGUMENT 5
+#define MAX_PAYLOAD 512
+//#define MAX_PACKET_SIZE 528 // taille max du payload + 4 octets header + 4 octets timestamp + 8 octets des deux crc
 
 
+uint8_t sender_window = WINDOW_SIZE;
+uint8_t receiver_window = WINDOW_SIZE;
+uint8_t seqnum_sent = 0;
+
+
+int read_write_loop(int socket_fd, int file_d);
+int send_data(int file_d, int socket_fd);
 
 #endif
