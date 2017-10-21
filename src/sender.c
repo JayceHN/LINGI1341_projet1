@@ -1,4 +1,4 @@
-#include "packet_interface.h"
+#include "packet_interface.c"
 #include "transport_interface.h"
 #include "sender.h"
 #include <string.h>
@@ -58,8 +58,14 @@ int main(int argc, char *argv[])
     }
 
     //obtention des valeurs pour host et port
-    host = argv[1];
-    port = atoi(argv[2]);
+    if (file_d != 0){
+        host = argv[3];
+        port = atoi(argv[4]);
+    }
+    else{
+        host = argv[1];
+        port = atoi(argv[2]);
+    }
     fprintf(stderr, "host: %s\n"
                     "port: %d\n", host,port);
 
@@ -80,21 +86,127 @@ int main(int argc, char *argv[])
      }
 
     /*
-     * Communication à proprement parler:
-     * Notre read_write_loop écrite auparavant
+     * Communication à proprement parler
      */
+
+     status = read_write_loop(socket_fd, file_d);
+     if (status < 0){
+         fprintf(stderr, "sender.c: la méthode read_write_loop ne s'est pas exécutée comme il faut.\n");
+         return EXIT_FAILURE;
+     }
 
     /*
      * Fermeture du canal de communication
      */
 
-     if (file_d != 0){
-         close(file_d);
-     }
+     close(socket_fd);
+
+}
+int read_write_loop(int socket_fd, int file_d){
+    int status = 0;
+    while(42){
+      /*
+       * Envoyer les données si les fenêtres de réception et d'envoi le permettent:
+       */
+       if (receiver_window > 0 && sender_window > 0){
+          status =  send_data(file_d, socket_fd);
+          if (status < 0){
+              fprintf(stderr, "read_write_loop: la méthode send_data ne s'est pas exécutée correctement.\n");
+              return status;
+          }
+       }
+
+      /*
+       * Recevoir les données:
+       * - lire les données reçues
+       * - création d'un paquet
+       * - décoder les données reçues
+       * -
+       */
+
+    }
+    return status;
 
 }
 
-/*int real_address(const char *address, struct sockaddr_in6 *rval){
+int send_data(int file_d, int socket_fd){
+    /*
+     * Envoyer les données si les fenêtres de réception et d'envoi le permettent:
+     * - lire les données à envoyer
+     * - créer un paquet
+     * - encoder le paquet
+     * - écrire le paquet sur le socket
+     * - mettre à jour les informations du sender
+     */
+     //déclaration et initialisaton des variables
+     char buffer[MAX_PAYLOAD];//buffer de la lecture des données
+     char buf_pkt[MAX_PACKET_SIZE]; //buffer pour écrire les données sur le pkt
+     int status; //status utilisé pour connaitre les erreurs
+     fd_set descriptor; //file descriptor de lecture
+     FD_ZERO(&descriptor);
+     FD_SET(STDIN_FILENO, &descriptor);
+     size_t data_len; //taille des données lues et à écrire
+     size_t pkt_len = MAX_PACKET_SIZE; // taille du paquet final
+
+     //lecture des données à envoyer
+     if (file_d != 0){
+         FD_SET(file_d, &descriptor);
+     }
+     status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
+     if (status < 0){
+         fprintf(stderr,"send_data: la méthode select n'a pas été exéutée jusqu'au bout.\n");
+         return EXIT_FAILURE;
+     }
+     //on vérifie si le file descriptor est bien contenu dans un ensemble
+     if (FD_ISSET(STDIN_FILENO, &descriptor)) {
+            data_len = read(STDIN_FILENO,buffer, sizeof(buffer));
+     }
+     if (FD_ISSET(file_d,&descriptor)) {
+            data_len = read(file_d, buffer, sizeof(buffer));
+     }
+     if(data_len <= 0){
+         fprintf(stderr,"send_data: on n'a pas lu de données.\n");
+         return EXIT_FAILURE;
+     }
+
+     //création et remplissage du paquet
+     pkt_t* pkt = pkt_new();
+     if(pkt == NULL){
+         fprintf(stderr,"send_data: la création du paquet s'est mal passé\n");
+         return EXIT_FAILURE;
+     }
+     //initialisation des champs du paquet
+     pkt_set_type(pkt, PTYPE_DATA);
+     pkt_set_window(pkt,sender_window);
+     pkt_set_tr(pkt,0);
+     pkt_set_timestamp(pkt,0);
+     pkt_set_payload(pkt, buffer, data_len);//qui se charge de noter la taille
+     pkt_set_seqnum(pkt,seqnum_sent);
+
+     //encodage du paquet
+     status = pkt_encode(pkt, buf_pkt, &pkt_len);
+     if (status < 0){
+         fprintf(stderr, "send_data: l'encodage ne s'est pas bien passé.\n");
+         return EXIT_FAILURE;
+     }
+
+     //écrire le paquet sur le socket
+     status = write(socket_fd, buf_pkt, pkt_len);
+     if (status < 0){
+         fprintf(stderr, "send_data: l'écriture sur le socket ne s'est pas bien passé.\n");
+         return EXIT_FAILURE;
+     }
+
+     //maj des infos du sender
+     sender_window --; //on réduit la fenêtre d'envoi
+     seqnum_sent = seqnum_sent++;
+     seqnum_sent = seqnum_sent % 255; //on maj le numéro de séquence
+
+
+
+}
+
+int real_address(const char *address, struct sockaddr_in6 *rval){
   struct addrinfo hints, *tmp;
 
   memset(rval, 0, sizeof(*rval));
@@ -148,4 +260,4 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port,
     }
   }
   return sockfd;
-}*/
+}
