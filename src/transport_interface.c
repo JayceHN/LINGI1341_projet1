@@ -186,16 +186,17 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
    ufds[0].fd = sfd;
    ufds[0].events = POLLIN;
    //One socket & normal data
-   pkt_t *packet;
+   pkt_t *packet = pkt_new();
    pkt_t *ack = pkt_new();
    pkt_t *receiver_buffer[WINDOW_SIZE];
+   uint8_t window = WINDOW_SIZE;
    int i;
    for (i = 0; i < WINDOW_SIZE; i++) {
      receiver_buffer[i] = NULL;
    }
    pkt_status_code code;
-   char read_buffer[MAX_PACKET_SIZE];
-   memset(read_buffer, 0, MAX_PACKET_SIZE);
+   char buffer[MAX_PACKET_SIZE];
+   memset(buffer, 0, MAX_PACKET_SIZE);
    int size = 0;
    uint8_t seqnum = 0;
    int receiver_fd;
@@ -222,7 +223,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
 
     //data on socket
      if (ufds[0].revents & POLLIN) {
-       size = recvfrom(sfd, read_buffer, MAX_PACKET_SIZE, 0,
+       size = recvfrom(sfd, buffer, MAX_PACKET_SIZE, 0,
          (struct sockaddr *) src,sizeof(struct sockaddr_in6));
        fprintf(stderr, "%d bytes received on socket \n", size);
        if (size <= 0) {
@@ -230,9 +231,40 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
        }
 
        packet = pkt_new();
-       code = pkt_decode(read_buffer, size, packet);
-       memset(read_buffer, 0, MAX_PACKET_SIZE);
+       code = pkt_decode(buffer, size, packet);
+       memset(buffer, 0, MAX_PACKET_SIZE);
 
+       // if DATA
+       if (pkt_get_type(packet) == PTYPE_DATA && code == PKT_OK) {
+         if(pkt_get_seqnum(pkt) == seqnum){
+           size = write(receiver_fd, pkt_get_payload(packet), pkt_get_length(packet));
+
+           seqnum = inc_seqnum(seqnum);
+           int j;
+           for (j = 0; j < WINDOW_SIZE; i++) {
+             // pkt in buffer to ack
+             if receiver_buffer[j] != NULL && pkt_get_seqnum(receiver_buffer[j]) == seqnum){
+               seqnum = inc_seqnum(seqnum);
+               window++;
+
+               pkt_set_type(ack, PTYPE_ACK);
+               pkt_set_window(ack, window);
+               pkt_set_seqnum(ack, seqnum);
+               pkt_encode(ack, buffer, &MAX_PACKET_SIZE);
+               sendto(sfd, buffer, MAX_PACKET_SIZE, 0,)
+             }
+           }
+         }
+       }
+      // if NACK
+       if (pkt_get_type(packet) == PTYPE_NACK && code == PKT_OK) {
+         /* code */
+       }
+      // if ACK
+       if (pkt_get_type(packet) == PTYPE_ACK && code == PKT_OK) {
+         /* code */
+       }
+       }
 
      }
    }
