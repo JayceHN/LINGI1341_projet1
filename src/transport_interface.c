@@ -200,6 +200,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
    int size = 0;
    uint8_t seqnum = 0;
    int receiver_fd;
+   socklen_t size_addr = sizeof(struct sockaddr_in6);
 
    //cas -f receiver
    if(fname){
@@ -212,7 +213,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
    int rv;
    while(42){
      //wait for the fd to become ready (2.5 seconds)
-     rv = poll(ufds, 1, 2500);
+     rv = poll(ufds, 1, 5000);
      if (rv <= 0) {
        /*
        A value of 0 indicates that the call timed out and no file descriptors
@@ -224,11 +225,12 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
     //data on socket
      if (ufds[0].revents & POLLIN) {
        size = recvfrom(sfd, buffer, MAX_PACKET_SIZE, 0,
-         (struct sockaddr *) src,sizeof(struct sockaddr_in6));
+         (struct sockaddr *) src, &size_addr);
        fprintf(stderr, "%d bytes received on socket \n", size);
        if (size <= 0) {
          break; //err
        }
+
 
        packet = pkt_new();
        code = pkt_decode(buffer, size, packet);
@@ -236,25 +238,28 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
 
        // if DATA
        if (pkt_get_type(packet) == PTYPE_DATA && code == PKT_OK) {
-         if(pkt_get_seqnum(pkt) == seqnum){
+         if(pkt_get_seqnum(packet) == seqnum){
            size = write(receiver_fd, pkt_get_payload(packet), pkt_get_length(packet));
 
            seqnum = inc_seqnum(seqnum);
            int j;
-           for (j = 0; j < WINDOW_SIZE; i++) {
+           for (j = 0; j < WINDOW_SIZE; j++) {
+             fprintf(stderr, "TEST\n" );
              // pkt in buffer to ack
-             if receiver_buffer[j] != NULL && pkt_get_seqnum(receiver_buffer[j]) == seqnum){
+             if (receiver_buffer[j] != NULL && pkt_get_seqnum(receiver_buffer[j]) == seqnum){
                seqnum = inc_seqnum(seqnum);
                window++;
 
                pkt_set_type(ack, PTYPE_ACK);
                pkt_set_window(ack, window);
                pkt_set_seqnum(ack, seqnum);
-               pkt_encode(ack, buffer, &MAX_PACKET_SIZE);
-               sendto(sfd, buffer, MAX_PACKET_SIZE, 0,)
+               pkt_encode(ack, buffer, MAX_PACKET_SIZE);
+               sendto(sfd, buffer, MAX_PACKET_SIZE, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
+               memset(buffer, 0, 64); //512 / 8 = 64
              }
            }
          }
+
        }
       // if NACK
        if (pkt_get_type(packet) == PTYPE_NACK && code == PKT_OK) {
@@ -264,12 +269,14 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
        if (pkt_get_type(packet) == PTYPE_ACK && code == PKT_OK) {
          /* code */
        }
-       }
+     } // end POLLIN
 
-     }
-   }
-
-}
+   } // end while
+   pkt_del(ack);
+   pkt_del(packet);
+   if(fname) close(receiver_fd);
+   shutdown(sfd, SHUT_WR);
+ } // end fun
 
 uint8_t inc_seqnum(uint8_t seqnum){
   if(seqnum == 255){
