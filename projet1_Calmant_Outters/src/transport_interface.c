@@ -191,7 +191,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
    pkt_status_code code;
    char buffer[MAX_PACKET_SIZE];
    memset(buffer, 0, MAX_PACKET_SIZE);
-   int size = 0;
+   size_t size = 0;
    uint8_t seqnum = 0;
    int receiver_fd;
    socklen_t size_addr = sizeof(struct sockaddr_in6);
@@ -220,7 +220,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
      if (ufds[0].revents & POLLIN) {
        size = recvfrom(sfd, buffer, MAX_PACKET_SIZE, 0,
          (struct sockaddr *) src, &size_addr);
-       fprintf(stderr, "%d bytes received on socket \n", size);
+       fprintf(stderr, "%zu bytes received on socket \n", size);
        if (size <= 0) {
          break; //err
        }
@@ -247,7 +247,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
                pkt_set_type(ack, PTYPE_ACK);
                pkt_set_window(ack, window);
                pkt_set_seqnum(ack, seqnum);
-               pkt_encode(ack, buffer, MAX_PACKET_SIZE);
+               pkt_encode(ack, buffer, &size);
                sendto(sfd, buffer, MAX_PACKET_SIZE, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
                memset(buffer, 0, 64); //512 / 8 = 64
              }

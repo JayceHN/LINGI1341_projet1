@@ -17,7 +17,7 @@ CFLAGS += -D_POSIX_C_SOURCE=201112L -D_XOPEN_SOURCE # feature_test_macros for ge
 LDFLAGS= -rdynamic -lz
 # ******************************************************************************
 
-all: clean receiver sender link
+all: clean receiver sender
 debug: CFLAGS += -g -DDEBUG -Wno-unused-parameter -fno-omit-frame-pointer
 debug: clean sender
 debug: clean receiver
@@ -29,10 +29,7 @@ receiver: src/receiver.o src/packet_interface.o src/transport_interface.o
 .PHONY: clean
 
 clean:
-	@rm -rf receiver sender src/*.o && cd LINGI1341-linksim && $(MAKE) clean
-
-link:
-	@cd LINGI1341-linksim && $(MAKE)
+	@rm -rf receiver sender src/*.o
 
 test:
 	@./tests/tests.sh
