@@ -8,6 +8,7 @@
 #include <string.h>
 #include <zlib.h>
 #include <arpa/inet.h>
+#include <stdio.h>
 
 /* Raccourci pour struct pkt */
 typedef struct pkt pkt_t;

@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-
-
 #define MIN_ARGUMENT 3
 #define MAX_ARGUMENT 5
 #define MAX_PAYLOAD 512

@@ -1,8 +1,5 @@
 #include "packet_interface.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-
 int main(int argc, char *argv[])
 {
   //argc prog_name + hostname/IPV6 + port

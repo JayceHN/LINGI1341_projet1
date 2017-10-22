@@ -1,13 +1,5 @@
 #include "packet_interface.h"
 
-#include <stddef.h> /* size_t */
-#include <stdint.h> /* uintx_t */
-#include <stdlib.h>
-#include <string.h>
-#include <zlib.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-
 
 //status code returned
 pkt_status_code code;
