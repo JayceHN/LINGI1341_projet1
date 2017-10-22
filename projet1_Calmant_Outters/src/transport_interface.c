@@ -78,7 +78,7 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port,
   int bindfd = 0;
   int connectfd = 0;
   //descriptor
-  int sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  int sockfd = socket(AF_INET6, SOCK_DGRAM, 0);
   if(sockfd < 0){
     //descibing the last error
     perror(strerror(errno));
