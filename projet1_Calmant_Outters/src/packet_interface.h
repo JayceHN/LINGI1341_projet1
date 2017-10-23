@@ -10,6 +10,19 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 
+//défini la structure 
+struct __attribute__((__packed__)) pkt
+{
+  uint8_t window:5;
+  uint8_t tr:1;
+  uint8_t type:2;
+  uint8_t seqnum; // [0,255]
+  uint16_t length; // [0,512]
+  uint32_t timestamp; // Own iplementation
+  uint32_t crc1; //CRC32 on header (tr 0) avant d'être envoyé
+  char *payload; // DATA 512 max si tr == 0 length (si non length == null)
+  uint32_t crc2; //CRC32 on payload avant d'être envoyé
+};
 /* Raccourci pour struct pkt */
 typedef struct pkt pkt_t;
 

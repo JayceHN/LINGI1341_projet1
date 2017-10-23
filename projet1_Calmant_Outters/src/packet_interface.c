@@ -4,20 +4,6 @@
 //status code returned
 pkt_status_code code;
 
-//defining the structure
-struct __attribute__((__packed__)) pkt
-{
-  uint8_t window:5;
-  uint8_t tr:1;
-  uint8_t type:2;
-  uint8_t seqnum; // [0,255]
-  uint16_t length; // [0,512]
-  uint32_t timestamp; // Own iplementation
-  uint32_t crc1; //CRC32 on header (tr 0) avant d'être envoyé
-  char *payload; // DATA 512 max si tr == 0 length (si non length == null)
-  uint32_t crc2; //CRC32 on payload avant d'être envoyé
-};
-
 pkt_t *pkt_new()
 {
   pkt_t *packet = (pkt_t *) calloc(1, sizeof(pkt_t));
@@ -127,7 +113,7 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
 		pkt->payload = calloc(1, (sizeof(char) * length));
 		if(pkt->payload == NULL)
 		{
-            fprintf(stderr, "Il n'y a pas assez de mémoire disponible.\n");
+      fprintf(stderr, "Il n'y a pas assez de mémoire disponible.\n");
 			return E_NOMEM;
 		}
 		memcpy(pkt->payload, data, length);
@@ -210,11 +196,6 @@ if (len > 12){//s'il y a un payload
 
 pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 {
-    //check len sufficent
-    if(*len < (4 * sizeof(uint32_t) + pkt_get_length(pkt))){
-        fprintf(stderr, "Il n'y a pas assez de mémoire disponible.\n");
-              return E_NOMEM;
-    }
     size_t size = 0;
     uint16_t length = htons(pkt_get_length(pkt));
     uint32_t timestamp = pkt_get_timestamp(pkt);
