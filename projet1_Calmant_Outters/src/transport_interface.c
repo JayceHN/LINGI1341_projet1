@@ -209,7 +209,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
    //cas -f receiver
    if(fname[0] != '\0'){
      printf("%s\n", fname );
-     receiver_fd = open(fname, O_RDONLY, S_IRUSR);
+     receiver_fd = open(fname, O_RDWR | O_CREAT, 0666);
    }
    else{
      receiver_fd = fileno(stdout);
@@ -286,7 +286,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
           pkt_encode(ack, buffer, &len);
 
           sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
-
+          pkt_del(ack);
           // on regarde s'il y a d'autres pkt valide
            for (i = 0; i < WINDOW_SIZE; i++) {
              if (receiver_buffer[i] != NULL && pkt_get_seqnum(receiver_buffer[i]) == seqnum){
@@ -305,6 +305,17 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
        }
      }
 
+     if(code != PKT_OK){
+       ack = pkt_new();
+       pkt_set_type(ack, PTYPE_NACK);
+       pkt_set_window(ack, window);
+       pkt_set_seqnum(ack, seqnum);
+       pkt_encode(ack, buffer, &len);
+
+       sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
+       pkt_del(ack);
+
+     }
 
      } // end POLLIN
    } // end while
