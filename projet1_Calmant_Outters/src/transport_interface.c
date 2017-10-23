@@ -234,7 +234,6 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
      //TODO : verifier socket et read_write_loop
     //data on socket
      if (ufds[0].revents & POLLIN) {
-       len = MAX_PAYLOAD_SIZE;
        size = recvfrom(sfd, buffer, len, 0,(struct sockaddr *) src, &(size_addr));
        fprintf(stderr, "%d byte(s) reçu(s) sur le socket \n", size);
 
@@ -265,7 +264,6 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
        // pkt ok et seqnum attendu
        if (code == PKT_OK &&  pkt_get_seqnum(packet) == seqnum && pkt_get_type(packet) == PTYPE_DATA ) { // pkt valide
           seqnum = inc_seqnum(seqnum);
-
            //écris sur le fd
            size = write(receiver_fd, pkt_get_payload(packet), pkt_get_length(packet));
            pkt_del(packet);
@@ -284,6 +282,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
           pkt_set_window(ack, window);
           pkt_set_seqnum(ack, seqnum);
           pkt_encode(ack, buffer, &len);
+          len = MAX_PAYLOAD_SIZE;
 
           sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
           pkt_del(ack);
@@ -311,6 +310,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
        pkt_set_window(ack, window);
        pkt_set_seqnum(ack, seqnum);
        pkt_encode(ack, buffer, &len);
+       len = MAX_PAYLOAD_SIZE;
 
        sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
        pkt_del(ack);
