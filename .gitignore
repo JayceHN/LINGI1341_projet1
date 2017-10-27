@@ -55,3 +55,6 @@ dkms.conf
 *.log
 input_file
 output_file
+receiver
+sender 
+received_file
