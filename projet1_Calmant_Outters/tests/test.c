@@ -60,15 +60,31 @@ void test_set_get(){
 }
 
 */
+
 void test_real_address(){
+
   struct sockaddr_in6 localhost;
+  struct sockaddr_in6 localhost_1;
   struct sockaddr_in6 rv;
+
   memset(localhost.sin6_addr.s6_addr, 0, 16);
-  localhost.sin6_addr.s6_addr[15] = 1;
+  memset(localhost_1.sin6_addr.s6_addr, 0, 16);
+
+  localhost_1.sin6_addr.s6_addr[15] = 1;
+
+  localhost.sin6_family =  AF_INET6;
+  localhost_1.sin6_family =  AF_INET6;
 
   real_address("localhost", &rv);
-  CU_ASSERT_EQUAL(memcmp(rv.sin6_addr.s6_addr, localhost.sin6_addr.s6_addr, 16), 0);
+  int cmp = memcmp(rv.sin6_addr.s6_addr, localhost.sin6_addr.s6_addr, 16);
+
+  if( cmp != 0){
+    CU_ASSERT_EQUAL(memcmp(rv.sin6_addr.s6_addr, localhost_1.sin6_addr.s6_addr, 16), 0);
+  }
+  else
+    CU_ASSERT_EQUAL(cmp, 0);
 }
+
 
 void test_inc_seqnum(){
   int seqnum = 0 ;
