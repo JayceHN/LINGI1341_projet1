@@ -221,6 +221,7 @@ int send_data(int file_d, int socket_fd){
      }
 
      struct timeval tv;
+     
      tv.tv_sec = 10;
      tv.tv_usec = 0;
 

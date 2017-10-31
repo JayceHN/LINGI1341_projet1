@@ -194,6 +194,7 @@ if (len > 12){//s'il y a un payload
   return PKT_OK;
 }
 
+
 pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 {
     size_t size = 0;
