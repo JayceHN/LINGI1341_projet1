@@ -62,16 +62,16 @@ int main(int argc, char *argv[])
         host = argv[1];
         port = atoi(argv[2]);
     }
-    fprintf(stderr, "host: %s\n"
-                    "port: %d\n", host,port);
+//    fprintf(stderr, "host: %s\n"
+//                    "port: %d\n", host,port);
 
 
     /*
      * Etablissement d'une connexion pour pouvoir communiquer
      * A l'aide des méthodes real_address et create_socket créées auparavant
      */
-     status = real_address(host, &destination);
-     if (status != 0){
+     const char* address = real_address(host, &destination);
+     if (address != NULL){
          fprintf(stderr, "sender.c: Il y a eu un problème avec la méthode real_address.\n");
          return EXIT_FAILURE;
      }
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
          fprintf(stderr, "sender.c: Il y a eu un problème lors de la création du socket.\n");
          return EXIT_FAILURE;
      }
-
+     //fcntl(socket_fd, F_SETFL, fcntl(socket_fd, F_GETFL, 0) | O_NONBLOCK);
     /*
      * Communication à proprement parler
      */
@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
 }
 int read_write_loop(int socket_fd, int file_d){
     int status = 0;
+
     while(42){
       /*
        * Envoyer les données si les fenêtres de réception et d'envoi le permettent:
@@ -182,6 +183,15 @@ int receive_data(int socket_fd){
     return status;
 }
 
+void print_log(pkt_t* packet){
+    fprintf(stderr, " \t\tPacket type : %u\n", pkt_get_type(packet));
+    fprintf(stderr, " \t\tPacket TR : %u\n", pkt_get_tr(packet));
+    fprintf(stderr, " \t\tPacket window : %u\n", pkt_get_window(packet));
+    fprintf(stderr, " \t\tPacket seqnum : %u\n", pkt_get_seqnum(packet));
+    fprintf(stderr, " \t\tPacket length : %u\n", pkt_get_length(packet));
+}
+
+
 int send_data(int file_d, int socket_fd){
     /*
      * Envoyer les données si les fenêtres de réception et d'envoi le permettent:
@@ -201,31 +211,51 @@ int send_data(int file_d, int socket_fd){
      FD_SET(STDIN_FILENO, &descriptor);
      size_t data_len = 0; //taille des données lues et à écrire
      size_t pkt_len = MAX_PACKET_SIZE; // taille du paquet final
-      pkt_t* pkt = NULL;//le paquet qu'on va envoyer
+     pkt_t* pkt = NULL;//le paquet qu'on va envoyer
 
      //lecture des données à envoyer
+     fprintf(stderr, "\tlecture des données à envoyer\n\n");
+       FD_SET(STDIN_FILENO, &descriptor);
      if (file_d != 0){
          FD_SET(file_d, &descriptor);
      }
-     status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
+
+     struct timeval tv;
+     tv.tv_sec = 10;
+     tv.tv_usec = 0;
+
+     status = select(socket_fd+1, &descriptor, NULL, NULL, &tv);
+     fprintf(stderr, "\tStatus at this point: %d\n", status);
+     fprintf(stderr, "\tLe select s'est bien passé\n\n");
      if (status < 0){
          fprintf(stderr,"send_data: la méthode select n'a pas été exécutée jusqu'au bout.\n");
          return EXIT_FAILURE;
      }
      //on vérifie si le file descriptor est bien contenu dans un ensemble
      if (FD_ISSET(STDIN_FILENO, &descriptor)) {
-            data_len = read(STDIN_FILENO,buffer, sizeof(buffer));
+         fprintf(stderr, "\tdescriptor is part of STDIN\n" );
+        data_len = read(STDIN_FILENO,buffer, sizeof(buffer));
+        fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
+
      }
-     if (FD_ISSET(file_d,&descriptor)) {
+     if (file_d != 0){
+         if (FD_ISSET(file_d,&descriptor)) {
+             fprintf(stderr, "\tdescriptor is part of file_d\n" );
             data_len = read(file_d, buffer, sizeof(buffer));
+            fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
+
+         }
      }
+
+     fprintf(stderr, "\t\tdescriptor should be somewhere\n" );
      if(data_len == 0){
-         fprintf(stderr,"send_data: on n'a pas lu de données.\n");
+         fprintf(stderr,"send_data: on n'a pas lu de données. (time out)\n");
          return EXIT_FAILURE;
      }
 
      //création et remplissage du paquet
     pkt = pkt_new();
+    fprintf(stderr, "\ton a bien créé le packet\n");
      if(pkt == NULL){
          fprintf(stderr,"send_data: la création du paquet s'est mal passé\n");
          return EXIT_FAILURE;
@@ -235,6 +265,7 @@ int send_data(int file_d, int socket_fd){
      pkt_set_window(pkt,sender_window);
      pkt_set_tr(pkt,0);
      pkt_set_timestamp(pkt,0);
+     print_log(pkt);
      pkt_set_payload(pkt, buffer, data_len);//qui se charge de noter la taille
      pkt_set_seqnum(pkt,seqnum_sent);
 
