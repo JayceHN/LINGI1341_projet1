@@ -304,6 +304,12 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
        }
      }
 
+     if(code == PKT_OK && pkt_get_type(packet) == PTYPE_DATA && pkt_get_length(packet) == 0
+        && pkt_get_seqnum(packet) == seqnum){
+       fprintf(stderr, "Transmission terminée\n" );
+       break;
+     }
+
      if(code != PKT_OK){
        ack = pkt_new();
        pkt_set_type(ack, PTYPE_NACK);
