@@ -70,8 +70,8 @@ int main(int argc, char *argv[])
      * Etablissement d'une connexion pour pouvoir communiquer
      * A l'aide des méthodes real_address et create_socket créées auparavant
      */
-     const char* address = real_address(host, &destination);
-     if (address != NULL){
+     int address = real_address(host, &destination);
+     if (address != 0){
          fprintf(stderr, "sender.c: Il y a eu un problème avec la méthode real_address.\n");
          return EXIT_FAILURE;
      }
@@ -221,7 +221,7 @@ int send_data(int file_d, int socket_fd){
      }
 
      struct timeval tv;
-     
+
      tv.tv_sec = 10;
      tv.tv_usec = 0;
 
