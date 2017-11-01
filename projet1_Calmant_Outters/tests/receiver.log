@@ -1,2 +1,16 @@
-Address already in use: Address already in use
-Impossible de créer un socket 
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 1
+ Packet seqnum : 0
+ Packet length : 512
+ Packet code : 0
+
+12 byte(s) reçu(s) sur le socket 
+La taille n'est pas correcte.
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 1
+ Packet seqnum : 1
+ Packet length : 0
+ Packet code : 3
