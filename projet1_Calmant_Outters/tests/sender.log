@@ -1,2 +1,31 @@
-Fin de la transmission
-Fin de la conversation. Bye!
+La taille du payload ne peut excéder les 512 octets (erreur dans le payload).
+RECEIVES AN ACK:
+ 		Packet type : 2
+ 		Packet TR : 0
+ 		Packet window : 31
+ 		Packet seqnum : 1
+ 		Packet length : 0
+receiver window: 31
+sender window: 30
+le seqnum du paquet à supprimer 1
+pkt_sent[0]: false
+pkt_sent[1]: true
+pkt_sent[2]: false
+pkt_sent[3]: false
+pkt_sent[4]: false
+send_data: on n'a pas lu de données. (time out)
+La taille du payload ne peut excéder les 512 octets (erreur dans le payload).
+RECEIVES AN ACK:
+ 		Packet type : 2
+ 		Packet TR : 0
+ 		Packet window : 31
+ 		Packet seqnum : 1
+ 		Packet length : 0
+receiver window: 31
+sender window: 30
+le seqnum du paquet à supprimer 1
+pkt_sent[0]: false
+pkt_sent[1]: false
+pkt_sent[2]: false
+pkt_sent[3]: false
+pkt_sent[4]: false

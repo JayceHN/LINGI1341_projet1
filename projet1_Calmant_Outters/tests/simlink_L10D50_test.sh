@@ -6,10 +6,10 @@ rm -f tests/received_file tests/input_file
 
 # Fichier au contenu aléatoire de 512 octets
 echo "(simlink_L10D50_test) input file aléatoire"
-dd if=/dev/urandom of=tests/input_file bs=1 count=512 &> /dev/null
+dd if=/dev/urandom of=tests/input_file bs=1 count=5120 &> /dev/null
 
 # On lance le simulateur de lien avec 10% de pertes et un délais de 50ms
-echo "(simlink_L10D50_test) limsink 50% de pertes et un délais de 50ms"
+echo "(simlink_L10D50_test) limsink 10% de pertes et un délais de 50ms (5120 octets)"
 ./tests/link_sim -p 26000 -P 7777 -l 10 -d 50 -R  &> tests/link.log &
 link_pid=$!
 

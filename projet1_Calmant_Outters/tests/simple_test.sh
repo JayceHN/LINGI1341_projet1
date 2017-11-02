@@ -6,10 +6,10 @@ rm -f tests/received_file tests/input_file tests/*.log
 
 # Fichier au contenu aléatoire de 512 octets
 echo "(simple_test) input_file aléatoire"
-dd if=/dev/urandom of=tests/input_file bs=1 count=512 &> /dev/null
+dd if=/dev/urandom of=tests/input_file bs=1 count=5120 &> /dev/null
 
 # On lance le receiver et capture sa sortie standard
-echo "(simple_test) lance receiver"
+echo "(simple_test) lance receiver (1024 octets)"
 ./receiver -f tests/received_file :: 7777  2> tests/receiver.log &
 receiver_pid=$!
 

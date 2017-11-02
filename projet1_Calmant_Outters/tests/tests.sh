@@ -5,4 +5,6 @@ wait
 wait
 ./tests/simlink_L50D50_test.sh &
 wait
+./tests/simlink_L70D150_test.sh &
+wait
 echo "La batterie de test est terminée!"
