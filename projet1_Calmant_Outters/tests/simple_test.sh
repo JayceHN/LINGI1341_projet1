@@ -10,7 +10,7 @@ dd if=/dev/urandom of=tests/input_file bs=1 count=512 &> /dev/null
 
 # On lance le receiver et capture sa sortie standard
 echo "(simple_test) lance receiver"
-./receiver -f tests/received_file :: 1234  2> tests/receiver.log &
+./receiver -f tests/received_file :: 7777  2> tests/receiver.log &
 receiver_pid=$!
 
 cleanup()
@@ -22,7 +22,7 @@ trap cleanup SIGINT  # Kill les process en arrière plan en cas de ^-C
 
 # On démarre le transfert
 echo "(simple_test) lance le sender"
-if ! ./sender localhost 1234 < tests/input_file 2> tests/sender.log ; then
+if ! ./sender localhost 7777 < tests/input_file 2> tests/sender.log ; then
   echo "(simple_test) Crash du sender!"
   cat tests/sender.log
   err=1  # On enregistre l'erreur
