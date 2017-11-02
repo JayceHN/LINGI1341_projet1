@@ -74,6 +74,5 @@ int main(int argc, char *argv[])
 
   close(socket_descriptor);
 
-  free(file_name);
   return EXIT_SUCCESS;
 }
