@@ -1,5 +1,15 @@
 #include "sender.h"
 
+
+void print_log(pkt_t* packet){
+    fprintf(stderr, " \t\tPacket type : %u\n", pkt_get_type(packet));
+    fprintf(stderr, " \t\tPacket TR : %u\n", pkt_get_tr(packet));
+    fprintf(stderr, " \t\tPacket window : %u\n", pkt_get_window(packet));
+    fprintf(stderr, " \t\tPacket seqnum : %u\n", pkt_get_seqnum(packet));
+    fprintf(stderr, " \t\tPacket length : %u\n", pkt_get_length(packet));
+}
+
+
 int main(int argc, char *argv[])
 {
     /*
@@ -144,7 +154,6 @@ int receive_data(int socket_fd){
     FD_ZERO(&descriptor);
     FD_SET(socket_fd,&descriptor);
 
-
     // lire les données reçues
     status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
     if(status < 0){
@@ -165,30 +174,42 @@ int receive_data(int socket_fd){
         fprintf(stderr,"receive_data: la création du paquet s'est mal passée.\n");
         return EXIT_FAILURE;
     }
+    //fprintf(stderr, "before decode\n" );
 
     // décoder les données reçues
     status = pkt_decode(buffer, data_len, pkt);
+    //fprintf(stderr, "after decode\n" );
+
+
     if(status < 0){
         fprintf(stderr,"receive_data: il y a eu un problème lors du décodage.\n");
         return EXIT_FAILURE;
     }
     if (pkt_get_type(pkt) == PTYPE_ACK){
+        fprintf(stderr, "RECEIVES AN ACK:\n" );
+        print_log(pkt);
         receiver_window = pkt_get_window(pkt);
-        pkt_del(pkt_sent[pkt_get_seqnum(pkt)]->pkt);
+        fprintf(stderr, "receiver window: %d\n", receiver_window );
+        fprintf(stderr, "sender window: %d\n", sender_window );
+        fprintf(stderr, "le seqnum du paquet à supprimer %d\n", pkt_get_seqnum(pkt)%MAX_SEQNUM );
+        fprintf(stderr, "pkt_sent[0]: %s\n", pkt_sent[0] != NULL?"true":"false" );
+        fprintf(stderr, "pkt_sent[1]: %s\n", pkt_sent[1] != NULL?"true":"false" );
+        fprintf(stderr, "pkt_sent[2]: %s\n", pkt_sent[2] != NULL?"true":"false" );
+        fprintf(stderr, "pkt_sent[3]: %s\n", pkt_sent[3] != NULL?"true":"false" );
+        fprintf(stderr, "pkt_sent[4]: %s\n", pkt_sent[4] != NULL?"true":"false" );
+        pkt_del(pkt_sent[pkt_get_seqnum(pkt)%MAX_SEQNUM]->pkt);
+        pkt_sent[pkt_get_seqnum(pkt)%MAX_SEQNUM]=NULL;
+//        fprintf(stderr, "there?\n");
+
     }
     else if (pkt_get_type(pkt) == PTYPE_NACK){
+        fprintf(stderr, "are we in the else?\n" );
 
     }
+//    fprintf(stderr, "should have been faulty by now\n" );
+
     pkt_del(pkt);
     return status;
-}
-
-void print_log(pkt_t* packet){
-    fprintf(stderr, " \t\tPacket type : %u\n", pkt_get_type(packet));
-    fprintf(stderr, " \t\tPacket TR : %u\n", pkt_get_tr(packet));
-    fprintf(stderr, " \t\tPacket window : %u\n", pkt_get_window(packet));
-    fprintf(stderr, " \t\tPacket seqnum : %u\n", pkt_get_seqnum(packet));
-    fprintf(stderr, " \t\tPacket length : %u\n", pkt_get_length(packet));
 }
 
 
@@ -214,41 +235,40 @@ int send_data(int file_d, int socket_fd){
      pkt_t* pkt = NULL;//le paquet qu'on va envoyer
 
      //lecture des données à envoyer
-     fprintf(stderr, "\tlecture des données à envoyer\n\n");
-       FD_SET(STDIN_FILENO, &descriptor);
+//     fprintf(stderr, "\tlecture des données à envoyer\n\n");
+     FD_SET(STDIN_FILENO, &descriptor);
      if (file_d != 0){
          FD_SET(file_d, &descriptor);
      }
 
-     struct timeval tv;
+    /* struct timeval tv;
 
      tv.tv_sec = 10;
-     tv.tv_usec = 0;
+     tv.tv_usec = 0
+     status = select(socket_fd+1, &descriptor, NULL, NULL, &tv);*/
 
-     status = select(socket_fd+1, &descriptor, NULL, NULL, &tv);
-     fprintf(stderr, "\tStatus at this point: %d\n", status);
-     fprintf(stderr, "\tLe select s'est bien passé\n\n");
+     status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
+     //fprintf(stderr, "\tStatus at this point: %d\n", status);
+     //fprintf(stderr, "\tLe select s'est bien passé\n\n");
      if (status < 0){
          fprintf(stderr,"send_data: la méthode select n'a pas été exécutée jusqu'au bout.\n");
          return EXIT_FAILURE;
      }
      //on vérifie si le file descriptor est bien contenu dans un ensemble
      if (FD_ISSET(STDIN_FILENO, &descriptor)) {
-         fprintf(stderr, "\tdescriptor is part of STDIN\n" );
+//         fprintf(stderr, "\tdescriptor is part of STDIN\n" );
         data_len = read(STDIN_FILENO,buffer, sizeof(buffer));
-        fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
+//        fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
 
      }
      if (file_d != 0){
          if (FD_ISSET(file_d,&descriptor)) {
-             fprintf(stderr, "\tdescriptor is part of file_d\n" );
+//             fprintf(stderr, "\tdescriptor is part of file_d\n" );
             data_len = read(file_d, buffer, sizeof(buffer));
-            fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
-
+//            fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
          }
      }
 
-     fprintf(stderr, "\t\tdescriptor should be somewhere\n" );
      if(data_len == 0){
          fprintf(stderr,"send_data: on n'a pas lu de données. (time out)\n");
          return EXIT_FAILURE;
@@ -256,7 +276,7 @@ int send_data(int file_d, int socket_fd){
 
      //création et remplissage du paquet
     pkt = pkt_new();
-    fprintf(stderr, "\ton a bien créé le packet\n");
+//    fprintf(stderr, "\ton a bien créé le packet\n");
      if(pkt == NULL){
          fprintf(stderr,"send_data: la création du paquet s'est mal passé\n");
          return EXIT_FAILURE;
@@ -266,9 +286,9 @@ int send_data(int file_d, int socket_fd){
      pkt_set_window(pkt,sender_window);
      pkt_set_tr(pkt,0);
      pkt_set_timestamp(pkt,0);
-     print_log(pkt);
      pkt_set_payload(pkt, buffer, data_len);//qui se charge de noter la taille
      pkt_set_seqnum(pkt,seqnum_sent);
+//     print_log(pkt);
 
      //encodage du paquet
      status = pkt_encode(pkt, buf_pkt, &pkt_len);
@@ -287,11 +307,19 @@ int send_data(int file_d, int socket_fd){
      //maj des infos du sender
      sender_window --; //on réduit la fenêtre d'envoi
      seqnum_sent ++;
-     seqnum_sent = seqnum_sent % 255; //on maj le numéro de séquence
-
+     seqnum_sent = seqnum_sent % MAX_SEQNUM; //on maj le numéro de séquence
+//     fprintf(stderr, "seqnum post modulo : %d\n",seqnum_sent );
      //garder en mémoire les paquets envoyés
      pkt_sent[seqnum_sent] = malloc(sizeof(struct history_pkt_sent));
      pkt_sent[seqnum_sent]->pkt = pkt;
+
+//     fprintf(stderr, "pkt_sent[0]: %s\n", pkt_sent[0] != NULL?"true":"false" );
+//     fprintf(stderr, "pkt_sent[1]: %s\n", pkt_sent[1] != NULL?"true":"false" );
+//     fprintf(stderr, "pkt_sent[2]: %s\n", pkt_sent[2] != NULL?"true":"false" );
+//     fprintf(stderr, "pkt_sent[3]: %s\n", pkt_sent[3] != NULL?"true":"false" );
+//     fprintf(stderr, "pkt_sent[4]: %s\n", pkt_sent[4] != NULL?"true":"false" );
+
      gettimeofday(&(pkt_sent[seqnum_sent]->timer),NULL);
+
      return status;
 }

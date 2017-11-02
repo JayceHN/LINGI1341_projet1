@@ -12,6 +12,7 @@
 #define MIN_ARGUMENT 3
 #define MAX_ARGUMENT 5
 #define MAX_PAYLOAD 512
+#define MAX_SEQNUM 5
 //#define MAX_PACKET_SIZE 528 // taille max du payload + 4 octets header + 4 octets timestamp + 8 octets des deux crc
 
 
