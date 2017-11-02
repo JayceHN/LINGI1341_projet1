@@ -6,3 +6,11 @@
  Packet length : 512
  Packet code : 0
 
+12 byte(s) reçu(s) sur le socket 
+La taille n'est pas correcte.
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 1
+ Packet seqnum : 1
+ Packet length : 0
+ Packet code : 3

@@ -222,7 +222,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
    int rv;
    while(42){
      rv = poll(ufds, 1, 5000);
-     if(rv == 0) break; 
+     if(rv == 0) break;
      if (rv < 0) {
        /*
        A value of 0 indicates that the call timed out and no file descriptors
@@ -317,7 +317,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
 
      else{
        ack = pkt_new();
-       pkt_set_type(ack, PTYPE_NACK);
+       pkt_set_type(ack, PTYPE_ACK);
        pkt_set_window(ack, window);
        pkt_set_seqnum(ack, seqnum);
        pkt_encode(ack, buffer, &len);
