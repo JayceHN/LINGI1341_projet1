@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 
-//défini la structure 
+//défini la structure
 struct __attribute__((__packed__)) pkt
 {
   uint8_t window:5;
@@ -37,7 +37,7 @@ typedef enum {
 #define MAX_PAYLOAD_SIZE 512
 /* Taille maximale de Window */
 #define MAX_WINDOW_SIZE 31
-#define WINDOW_SIZE 10
+#define WINDOW_SIZE 31
 
 /* Valeur de retours des fonctions */
 typedef enum {
