@@ -44,8 +44,8 @@ fi
 
 # On vérifie que le transfert s'est bien déroulé
 if [[ "$(md5sum tests/input_file | awk '{print $1}')" != "$(md5sum tests/received_file | awk '{print $1}')" ]]; then
-  echo "Le transfert simple_test a corrompu le fichier!"
-  echo "Diff binaire des deux fichiers: (attendu vs produit)"
+  echo "(simple_test) Le transfert simple_test a corrompu le fichier!"
+  echo "(simple_test) Diff binaire des deux fichiers: (attendu vs produit)"
   diff -C 9 <(od -Ax -t x1z tests/input_file) <(od -Ax -t x1z tests/received_file)
   exit 1
 else
