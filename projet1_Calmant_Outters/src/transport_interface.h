@@ -40,14 +40,6 @@ int real_address(const char *address, struct sockaddr_in6 *rval);
  */
 int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockaddr_in6 *dest_addr, int dst_port);
 
-/* Block the caller until a message is received on sfd,
- * and connect the socket to the source addresse of the received message
- * @sfd: a file descriptor to a bound socket but not yet connected
- * @return: 0 in case of success, -1 otherwise
- * @POST: This call is idempotent, it does not 'consume' the data of the message,
- * and could be repeated several times blocking only at the first call.
- */
-int wait_for_client(int sfd);
 
 /*
 * Sender is reading stdin and converting read data into packages
@@ -71,13 +63,6 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname);
 * incrementing the sequence and making sure no overflow occurs
 */
 uint8_t inc_seqnum(uint8_t seqnum);
-
-
-/*
-* comparing two sequence numbers and returning 0 if seqnum1 < seqnum2
-* 1 if seqnum1 = seqnum2 and -1 otherwise
-*/
-int compare_seqnum(uint8_t seqnum1, uint8_t seqnum2);
 
 
 #endif

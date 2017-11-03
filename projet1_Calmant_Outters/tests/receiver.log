@@ -1,0 +1,16 @@
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 31
+ Packet seqnum : 0
+ Packet length : 512
+ Packet code : 0
+
+512 byte(s) reçu(s) sur le socket 
+Le crc2 n'est pas valide, reçu :  1819146075 recalculé : 1819146075
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 30
+ Packet seqnum : 1
+ Packet length : 512
+ Packet code : 4

@@ -134,38 +134,6 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port,
   return sockfd;
 }
 
-
-int wait_for_client(int sfd){
-  struct sockaddr_in6 addr;
-  char buf[MAX_PACKET_SIZE];
-  int connectfd = 0;
-  socklen_t len;
-  /*
-  ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
-                      struct sockaddr *src_addr, socklen_t *addrlen);
-  recvfrom() places the received message into the buffer buf.  The caller must
-  specify the size of  the  buffer in len.
-
-  These calls return the number of bytes received, or -1 if an error occurred.
-  In the event of an error, errno is set to indicate the error.
-
-  These  are  some  standard  errors  generated  by  the  socket layer.
-  Additional errors may be generated and returned from the underlying protocol
-  modules; see their manual pages.
-  */
-  int ret = recvfrom(sfd, buf, sizeof(buf), MSG_PEEK, (struct sockaddr *) &addr, &len);
-  if(ret < 0) perror(strerror(errno));
-
-  connectfd = connect(sfd, (struct sockaddr *) &addr, len);
-  if(connectfd < 0){
-    perror(strerror(errno));
-    return -1;
-  }
-  return 0;
-}
-
-
-
 void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
 {
   /*
@@ -337,18 +305,4 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname)
 
 uint8_t inc_seqnum(uint8_t seqnum){
   return (seqnum+1)%256;
-}
-
-int compare_seqnum(uint8_t seqnum1, uint8_t seqnum2){
-  if(seqnum1 < seqnum2){
-    return 0;
-  }
-  else if(seqnum1 > 255 - WINDOW_SIZE && seqnum2 == 0){
-    return 0;
-  }
-  else if (seqnum1 == seqnum2){
-    return 1;
-  }
-
-  return -1;
 }

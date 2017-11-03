@@ -11,14 +11,6 @@ void test_pkt_new(){
   pkt_del(pkt);
 }
 
-void test_pkt_del(){
-  pkt_t * pkt = pkt_new();
-  pkt_del(pkt);
-
-  CU_ASSERT_PTR_NULL(pkt);
-
-}
-
 void test_set_get(){
   pkt_t * pkt = pkt_new();
 
@@ -95,6 +87,24 @@ void test_inc_seqnum(){
   CU_ASSERT_EQUAL(seqnum, 0);
 }
 
+void test_create_socket(){
+
+   struct sockaddr_in6 source;
+   real_address("localhost", &source);
+
+   int rv = create_socket(&source, 9858, NULL, 0);
+
+  CU_ASSERT_TRUE(rv > 0);
+
+  close(rv);
+
+}
+
+void test_(){
+
+
+}
+
 int setup(void)
 {
 	return 0;
@@ -119,6 +129,7 @@ int main(void) {
   if((NULL == CU_add_test(pSuite,"Test_pkt_new", test_pkt_new))
     ||(NULL == CU_add_test(pSuite,"Test_set_get", test_set_get))
     ||(NULL == CU_add_test(pSuite,"Test_real_address", test_real_address))
+    ||(NULL == CU_add_test(pSuite,"test_create_socket", test_create_socket))
     ||(NULL == CU_add_test(pSuite,"Test_inc_seqnum", test_inc_seqnum))
     )
   {
