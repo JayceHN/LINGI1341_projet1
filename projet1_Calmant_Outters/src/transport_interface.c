@@ -211,7 +211,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
 
        //pkt ok et seqnum non attendu
        if (code == PKT_OK && pkt_get_seqnum(packet) != seqnum && pkt_get_type(packet) == PTYPE_DATA) {
-         if(pkt_get_seqnum(packet) <= (seqnum + window) && pkt_get_seqnum(packet) > seqnum ){
+         if(pkt_get_seqnum(packet) <= ((seqnum  + window) % (WINDOW_SIZE - 1)) && pkt_get_seqnum(packet) > seqnum ){
            for (i = 0; i < WINDOW_SIZE; i++) {
              if (receiver_buffer[i] != NULL && pkt_get_seqnum(receiver_buffer[i]) == seqnum) {
                break;
@@ -296,6 +296,10 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
         sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
         pkt_del(ack);
       } // end   else if (code != PKT_OK)
+
+      else if (WINDOW_SIZE - window == 0) {
+
+      }
 
     } // end POLLIN socket
   } // end while

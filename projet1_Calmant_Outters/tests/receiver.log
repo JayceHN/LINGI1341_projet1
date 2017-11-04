@@ -41,7 +41,7 @@
 528 byte(s) reçu(s) sur le socket 
  Packet type : 1
  Packet TR : 0
- Packet window : 26
+ Packet window : 25
  Packet seqnum : 5
  Packet length : 512
  Packet code : 0
@@ -49,7 +49,7 @@
 528 byte(s) reçu(s) sur le socket 
  Packet type : 1
  Packet TR : 0
- Packet window : 26
+ Packet window : 24
  Packet seqnum : 6
  Packet length : 512
  Packet code : 0
@@ -57,7 +57,7 @@
 528 byte(s) reçu(s) sur le socket 
  Packet type : 1
  Packet TR : 0
- Packet window : 26
+ Packet window : 23
  Packet seqnum : 7
  Packet length : 512
  Packet code : 0
@@ -65,7 +65,7 @@
 528 byte(s) reçu(s) sur le socket 
  Packet type : 1
  Packet TR : 0
- Packet window : 26
+ Packet window : 22
  Packet seqnum : 8
  Packet length : 512
  Packet code : 0
@@ -73,7 +73,7 @@
 528 byte(s) reçu(s) sur le socket 
  Packet type : 1
  Packet TR : 0
- Packet window : 26
+ Packet window : 21
  Packet seqnum : 9
  Packet length : 512
  Packet code : 0

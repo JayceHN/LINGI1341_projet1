@@ -165,7 +165,7 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
         for (i = 0; i < WINDOW_SIZE; i++) {
           if(sender_buffer[i] != NULL && pkt_get_seqnum(sender_buffer[i]) <= ((seqnum  + sender_buffer_size) % (WINDOW_SIZE - 1))){
             //RTT 3sec
-            if ( difftime(pkt_get_timestamp(sender_buffer[i]), stamp) < -3.0 ) {
+            if ( difftime(pkt_get_timestamp(sender_buffer[i]), stamp) < -2.0 ) {
               pkt_encode(sender_buffer[i], buffer1, &len);
               sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
               memset(buffer1, 0, MAX_PACKET_SIZE);
