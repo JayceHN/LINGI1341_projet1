@@ -163,7 +163,7 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
         stamp = tm->tm_sec;
 
         for (i = 0; i < WINDOW_SIZE; i++) {
-          if(sender_buffer[i] != NULL && pkt_get_seqnum(sender_buffer[i]) <= seqnum + sender_buffer_size){
+          if(sender_buffer[i] != NULL && pkt_get_seqnum(sender_buffer[i]) <= ((seqnum  + sender_buffer_size) % (WINDOW_SIZE - 1))){
             //RTT 3sec
             if ( difftime(pkt_get_timestamp(sender_buffer[i]), stamp) < -3.0 ) {
               pkt_encode(sender_buffer[i], buffer1, &len);
