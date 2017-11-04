@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     /*
      * Déclaration et initialisation des variables
      */
-    int file_d = 0; //le file descriptor dont on aura besoin pour lire le fichier
+    int file_d = fileno(stdin); //le file descriptor dont on aura besoin pour lire le fichier
     struct sockaddr_in6 destination; // une structure pour garder l'adresse de destination
     int port; //le port sur lequel le receiver écoute
     char* host; //l'adresse du receiver
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
      * Communication à proprement parler
      */
 
-     status = read_write_loop(socket_fd, file_d);
+     status = read_write_loop(socket_fd, file_d, &destination);
      if (status < 0){
          fprintf(stderr, "sender.c: la méthode read_write_loop ne s'est pas exécutée comme il faut.\n");
          return EXIT_FAILURE;
@@ -108,36 +108,8 @@ int main(int argc, char *argv[])
      close(socket_fd);
 
 }
-int read_write_loop(int socket_fd, int file_d){
+int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
     int status = 0;
-
-    while(42){
-      /*
-       * Envoyer les données si les fenêtres de réception et d'envoi le permettent:
-       */
-       if (receiver_window > 0 && sender_window > 0){
-          status =  send_data(file_d, socket_fd);
-          if (status < 0){
-              fprintf(stderr, "read_write_loop: la méthode send_data ne s'est pas exécutée correctement.\n");
-              return status;
-          }
-       }
-
-      /*
-       * Recevoir les données:
-       */
-       status = receive_data(socket_fd);
-       if (status < 0){
-           fprintf(stderr, "read_write_loop: la méthode receive_data ne s'est pas exécutée correctement.\n");
-           return status;
-       }
-
-    }
-    return status;
-
-}
-
-int receive_data(int socket_fd){
     /*
      * Recevoir les données:
      * - lire les données reçues
@@ -145,181 +117,147 @@ int receive_data(int socket_fd){
      * - décoder les données reçues
      */
     //déclaration et initialisaton des variables
-    char buffer[MAX_PACKET_SIZE]; //buffer des données que l'on reçoit
-    size_t data_len = 0; //la taille des données que l'on reçoit
-    fd_set descriptor; //file descriptor de lecture
-    int status=0; //pour mesurer le bon fonctionnement des méthodes
-    pkt_t* pkt = NULL; //le paquet qu'on va recevoir
+    char buffer1[MAX_PACKET_SIZE]; //buffer des données que l'on reçoit
+    char buffer2[MAX_PAYLOAD_SIZE]; //buffer des données que l'on reçoit
+    memset(buffer1, 0, MAX_PACKET_SIZE);
+    memset(buffer2, 0, MAX_PAYLOAD_SIZE);
 
-    FD_ZERO(&descriptor);
-    FD_SET(socket_fd,&descriptor);
+    pkt_t* pkt ; //le paquet qu'on va recevoir
+    pkt_t* ack = pkt_new(); //le paquet qu'on va recevoir
 
-    // lire les données reçues
-    status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
-    if(status < 0){
-        fprintf(stderr, "receive_data: la méthode select ne s'est pas bien exécutée.\n");
-        return EXIT_FAILURE;
+    int i;
+    int rv = 0;
+    int size = 0;
+  	socklen_t size_in6 = sizeof(struct sockaddr_in6);
+    size_t len = MAX_PACKET_SIZE;
+
+    time_t now;
+	  struct tm *tm;
+	  uint32_t stamp = 0;
+
+    uint8_t seqnum = 0;
+
+    pkt_t *sender_buffer[WINDOW_SIZE];
+    for(i = 0 ; i < WINDOW_SIZE ; i++){
+      sender_buffer[i] = NULL;
     }
-    if (FD_ISSET(socket_fd, &descriptor)){
-        data_len = read(socket_fd, buffer, sizeof(buffer));
-    }
-    if (data_len == 0){
-        fprintf(stderr,"receive_data: on n'a pas lu de données.\n");
-        return EXIT_FAILURE;
-    }
-
-    // création d'un paquet
-    pkt = pkt_new();
-    if (pkt == NULL){
-        fprintf(stderr,"receive_data: la création du paquet s'est mal passée.\n");
-        return EXIT_FAILURE;
-    }
-    //fprintf(stderr, "before decode\n" );
-
-    // décoder les données reçues
-    status = pkt_decode(buffer, data_len, pkt);
-    //fprintf(stderr, "after decode\n" );
+    int receiver_buffer_size = 1;
+    uint8_t sender_buffer_size = WINDOW_SIZE;
 
 
-    if(status < 0){
-        fprintf(stderr,"receive_data: il y a eu un problème lors du décodage.\n");
-        return EXIT_FAILURE;
-    }
-    if (pkt_get_type(pkt) == PTYPE_ACK){
-        fprintf(stderr, "RECEIVES AN ACK:\n" );
-        print_log(pkt);
-        receiver_window = pkt_get_window(pkt);
-        fprintf(stderr, "receiver window: %d\n", receiver_window );
-        fprintf(stderr, "sender window: %d\n", sender_window );
-        fprintf(stderr, "le seqnum du paquet à supprimer %d\n", pkt_get_seqnum(pkt)%MAX_SEQNUM );
-        fprintf(stderr, "pkt_sent[0]: %s\n", pkt_sent[0] != NULL?"true":"false" );
-        fprintf(stderr, "pkt_sent[1]: %s\n", pkt_sent[1] != NULL?"true":"false" );
-        fprintf(stderr, "pkt_sent[2]: %s\n", pkt_sent[2] != NULL?"true":"false" );
-        fprintf(stderr, "pkt_sent[3]: %s\n", pkt_sent[3] != NULL?"true":"false" );
-        fprintf(stderr, "pkt_sent[4]: %s\n", pkt_sent[4] != NULL?"true":"false" );
-        pkt_del(pkt_sent[pkt_get_seqnum(pkt)%MAX_SEQNUM]->pkt);
-        pkt_sent[pkt_get_seqnum(pkt)%MAX_SEQNUM]=NULL;
-//        fprintf(stderr, "there?\n");
+    struct pollfd ufds[2];
+    ufds[0].fd = socket_fd;
+    ufds[0].events = POLLIN;
+    ufds[1].fd = file_d;
+    ufds[1].events = POLLIN;
 
-    }
-    else if (pkt_get_type(pkt) == PTYPE_NACK){
-        fprintf(stderr, "are we in the else?\n" );
+    while(42){
 
-    }
-//    fprintf(stderr, "should have been faulty by now\n" );
+      rv = poll(ufds, 2, -1);
+      if(rv <= 0) break;
 
-    pkt_del(pkt);
-    return status;
-}
+      //réenvoyer
+      if (sender_buffer_size < WINDOW_SIZE) {
+        now = time(0);
+        tm = localtime(&now);
+        stamp = tm->tm_sec;
+
+        for (i = 0; i < WINDOW_SIZE; i++) {
+          if(sender_buffer[i] != NULL && pkt_get_seqnum(sender_buffer[i]) <= seqnum + sender_buffer_size){
+            //RTT 3sec
+            if ( difftime(pkt_get_timestamp(sender_buffer[i]), stamp) < -3.0 ) {
+              pkt_encode(sender_buffer[i], buffer1, &len);
+              sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
+              memset(buffer1, 0, MAX_PACKET_SIZE);
+              len = MAX_PACKET_SIZE;
+            }
+          }
+        }
+      } // end if réenvoyer
+
+      //on lit sur le socket_fd, on reçoit un ack
+      if(ufds[0].revents & POLLIN){
+        size = recvfrom(socket_fd, buffer1, MAX_PACKET_SIZE, 0, (struct sockaddr *)dest, &(size_in6));
+
+        if(size < 0) break ;
+
+        status = pkt_decode(buffer1, size, ack);
+        memset(buffer1, 0, MAX_PACKET_SIZE);
+        //ack attendu.
+        if (status == PKT_OK && pkt_get_type(ack) == PTYPE_ACK) {
+          receiver_buffer_size = pkt_get_window(ack);
+          //TODO : CHANGER CONDITION SEQNUM
+          for (i = 0; i < WINDOW_SIZE; i++) {
+            if (sender_buffer[i] != NULL) {
+              if (pkt_get_seqnum(ack) > pkt_get_seqnum(sender_buffer[i]) && pkt_get_seqnum(ack) <=  seqnum) {
+                printf("SEQNUM ACK : %d\n", pkt_get_seqnum(ack) );
+                pkt_del(sender_buffer[i]);
+                sender_buffer[i] = NULL;
+                sender_buffer_size ++;
+              }
+            }
+          }
+        }// fin ACK
 
 
-int send_data(int file_d, int socket_fd){
-    /*
-     * Envoyer les données si les fenêtres de réception et d'envoi le permettent:
-     * - lire les données à envoyer
-     * - créer un paquet
-     * - encoder le paquet
-     * - écrire le paquet sur le socket
-     * - mettre à jour les informations du sender
-     * - garder en mémoire les paquets qui ont été envoyés
-     */
-     //déclaration et initialisaton des variables
-     char buffer[MAX_PAYLOAD];//buffer de la lecture des données
-     char buf_pkt[MAX_PACKET_SIZE]; //buffer pour écrire les données sur le pkt
-     int status; //status utilisé pour connaitre les erreurs
-     fd_set descriptor; //file descriptor de lecture
-     FD_ZERO(&descriptor);
-     FD_SET(STDIN_FILENO, &descriptor);
-     size_t data_len = 0; //taille des données lues et à écrire
-     size_t pkt_len = MAX_PACKET_SIZE; // taille du paquet final
-     pkt_t* pkt = NULL;//le paquet qu'on va envoyer
+      } //fin poll
 
-     //lecture des données à envoyer
-//     fprintf(stderr, "\tlecture des données à envoyer\n\n");
-     FD_SET(STDIN_FILENO, &descriptor);
-     if (file_d != 0){
-         FD_SET(file_d, &descriptor);
-     }
+      //on lit sur le file_d, données à envoyer
+      if (ufds[1].revents & POLLIN) {
+        if(sender_buffer_size > 0 && receiver_buffer_size > 0){
+          size = read(file_d, buffer2, MAX_PAYLOAD_SIZE);
+          if(size <= 0) break;
+          pkt = pkt_new();
+          pkt_set_type(pkt, PTYPE_DATA);
+          pkt_set_seqnum(pkt, seqnum);
 
-    /* struct timeval tv;
+          now = time(0);
+          tm = localtime(&now);
+          stamp = tm->tm_sec;
+          pkt_set_timestamp(pkt, stamp);
 
-     tv.tv_sec = 10;
-     tv.tv_usec = 0
-     status = select(socket_fd+1, &descriptor, NULL, NULL, &tv);*/
+          sender_buffer_size --;
+          pkt_set_window(pkt, sender_buffer_size);
+          pkt_set_payload(pkt, buffer2, size);
 
-     status = select(socket_fd+1, &descriptor, NULL, NULL, 0);
-     //fprintf(stderr, "\tStatus at this point: %d\n", status);
-     //fprintf(stderr, "\tLe select s'est bien passé\n\n");
-     if (status < 0){
-         fprintf(stderr,"send_data: la méthode select n'a pas été exécutée jusqu'au bout.\n");
-         return EXIT_FAILURE;
-     }
-     //on vérifie si le file descriptor est bien contenu dans un ensemble
-     if (FD_ISSET(STDIN_FILENO, &descriptor)) {
-//         fprintf(stderr, "\tdescriptor is part of STDIN\n" );
-        data_len = read(STDIN_FILENO,buffer, sizeof(buffer));
-//        fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
+          pkt_encode(pkt, buffer1, &len);
+          sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
 
-     }
-     if (file_d != 0){
-         if (FD_ISSET(file_d,&descriptor)) {
-//             fprintf(stderr, "\tdescriptor is part of file_d\n" );
-            data_len = read(file_d, buffer, sizeof(buffer));
-//            fprintf(stderr, "\tdata_len? %lu\n\n", data_len);
-         }
-     }
+          sender_buffer[(seqnum % (WINDOW_SIZE - 1))] = pkt;
+          seqnum = inc_seqnum(seqnum);
 
-     if(data_len == 0){
-         fprintf(stderr,"send_data: on n'a pas lu de données. (time out)\n");
-         return EXIT_FAILURE;
-     }
+          memset(buffer1, 0, MAX_PACKET_SIZE);
+          memset(buffer2, 0, MAX_PAYLOAD_SIZE);
+          len = MAX_PACKET_SIZE;
+        }
+      }
 
-     //création et remplissage du paquet
-    pkt = pkt_new();
-//    fprintf(stderr, "\ton a bien créé le packet\n");
-     if(pkt == NULL){
-         fprintf(stderr,"send_data: la création du paquet s'est mal passé\n");
-         return EXIT_FAILURE;
-     }
-     //initialisation des champs du paquet
-     pkt_set_type(pkt, PTYPE_DATA);
-     pkt_set_window(pkt,sender_window);
-     pkt_set_tr(pkt,0);
-     pkt_set_timestamp(pkt,0);
-     pkt_set_payload(pkt, buffer, data_len);//qui se charge de noter la taille
-     pkt_set_seqnum(pkt,seqnum_sent);
-//     print_log(pkt);
+      else if(file_d != fileno(stdin) && sender_buffer_size == WINDOW_SIZE){
+        pkt = pkt_new();
+        pkt_set_type(pkt, PTYPE_DATA);
+        pkt_set_seqnum(pkt, seqnum);
 
-     //encodage du paquet
-     status = pkt_encode(pkt, buf_pkt, &pkt_len);
-     if (status < 0){
-         fprintf(stderr, "send_data: l'encodage ne s'est pas bien passé.\n");
-         return EXIT_FAILURE;
-     }
+        now = time(0);
+        tm = localtime(&now);
+        stamp = tm->tm_sec;
+        pkt_set_timestamp(pkt, stamp);
 
-     //écrire le paquet sur le socket
-     status = write(socket_fd, buf_pkt, pkt_len);
-     if (status < 0){
-         fprintf(stderr, "send_data: l'écriture sur le socket ne s'est pas bien passé.\n");
-         return EXIT_FAILURE;
-     }
+        sender_buffer_size --;
+        pkt_set_window(pkt, sender_buffer_size);
+        pkt_set_length(pkt, 0);
+        pkt_encode(pkt, buffer1, &len);
+        sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
 
-     //maj des infos du sender
-     sender_window --; //on réduit la fenêtre d'envoi
-     seqnum_sent ++;
-     seqnum_sent = seqnum_sent % MAX_SEQNUM; //on maj le numéro de séquence
-//     fprintf(stderr, "seqnum post modulo : %d\n",seqnum_sent );
-     //garder en mémoire les paquets envoyés
-     pkt_sent[seqnum_sent] = malloc(sizeof(struct history_pkt_sent));
-     pkt_sent[seqnum_sent]->pkt = pkt;
+        sender_buffer[(seqnum % (WINDOW_SIZE - 1))] = pkt;
+        seqnum = inc_seqnum(seqnum);
 
-//     fprintf(stderr, "pkt_sent[0]: %s\n", pkt_sent[0] != NULL?"true":"false" );
-//     fprintf(stderr, "pkt_sent[1]: %s\n", pkt_sent[1] != NULL?"true":"false" );
-//     fprintf(stderr, "pkt_sent[2]: %s\n", pkt_sent[2] != NULL?"true":"false" );
-//     fprintf(stderr, "pkt_sent[3]: %s\n", pkt_sent[3] != NULL?"true":"false" );
-//     fprintf(stderr, "pkt_sent[4]: %s\n", pkt_sent[4] != NULL?"true":"false" );
+        memset(buffer1, 0, MAX_PACKET_SIZE);
+        memset(buffer2, 0, MAX_PAYLOAD_SIZE);
+        len = MAX_PACKET_SIZE;
+      }
+    }// end while 42
 
-     gettimeofday(&(pkt_sent[seqnum_sent]->timer),NULL);
-
-     return status;
+    pkt_del(ack);
+    close(file_d);
+    return 0;
 }

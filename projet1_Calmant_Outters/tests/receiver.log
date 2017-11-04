@@ -1,16 +1,80 @@
 528 byte(s) reçu(s) sur le socket 
  Packet type : 1
  Packet TR : 0
- Packet window : 31
+ Packet window : 30
  Packet seqnum : 0
  Packet length : 512
  Packet code : 0
 
-512 byte(s) reçu(s) sur le socket 
-Le crc2 n'est pas valide, reçu :  1819146075 recalculé : 1819146075
+528 byte(s) reçu(s) sur le socket 
  Packet type : 1
  Packet TR : 0
- Packet window : 30
+ Packet window : 29
  Packet seqnum : 1
  Packet length : 512
- Packet code : 4
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 28
+ Packet seqnum : 2
+ Packet length : 512
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 27
+ Packet seqnum : 3
+ Packet length : 512
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 26
+ Packet seqnum : 4
+ Packet length : 512
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 26
+ Packet seqnum : 5
+ Packet length : 512
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 26
+ Packet seqnum : 6
+ Packet length : 512
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 26
+ Packet seqnum : 7
+ Packet length : 512
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 26
+ Packet seqnum : 8
+ Packet length : 512
+ Packet code : 0
+
+528 byte(s) reçu(s) sur le socket 
+ Packet type : 1
+ Packet TR : 0
+ Packet window : 26
+ Packet seqnum : 9
+ Packet length : 512
+ Packet code : 0
+

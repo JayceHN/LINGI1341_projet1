@@ -27,8 +27,6 @@ struct history_pkt_sent{
 
 struct history_pkt_sent* pkt_sent[WINDOW_SIZE];
 
-int read_write_loop(int socket_fd, int file_d);
-int send_data(int file_d, int socket_fd);
-int receive_data(int socket_fd);
+int read_write_loop(int socket_fd, int file_d, struct sockaddr_in6 *dest);
 
 #endif

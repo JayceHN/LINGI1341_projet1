@@ -106,10 +106,6 @@ pkt_status_code pkt_set_crc1(pkt_t *pkt, const uint32_t crc1)
 
 pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length)
 {
-    if(length <= 0){
-        fprintf(stderr, "La taille du payload ne peut excéder les 512 octets (erreur dans le payload).\n");
-        return E_LENGTH;
-    }
 		pkt->payload = calloc(1, (sizeof(char) * length));
 		if(pkt->payload == NULL)
 		{
