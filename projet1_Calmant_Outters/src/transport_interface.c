@@ -168,7 +168,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
    memset(buffer, 0, MAX_PACKET_SIZE);
 
    int size = 0;
-   uint8_t seqnum = 0;
+   uint8_t seqnum = 1;
 
    int receiver_fd;
    socklen_t size_addr = sizeof(struct sockaddr_in6);
@@ -190,7 +190,6 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
    while(42){
      rv = poll(ufds, 1, 5000);
      if(rv <= 0) break;
-     //TODO : verifier socket et read_write_loop
     //data on socket
      if (ufds[0].revents & POLLIN) {
        size = recvfrom(sfd, buffer, MAX_PACKET_SIZE, 0,(struct sockaddr *) src, &size_addr);
@@ -296,10 +295,6 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
         sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
         pkt_del(ack);
       } // end   else if (code != PKT_OK)
-
-      else if (WINDOW_SIZE - window == 0) {
-
-      }
 
     } // end POLLIN socket
   } // end while

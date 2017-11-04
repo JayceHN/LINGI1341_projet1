@@ -144,6 +144,8 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
     int receiver_buffer_size = 1;
     uint8_t sender_buffer_size = WINDOW_SIZE;
 
+    int lastack = 0 ;
+    int count = 0 ;
 
     struct pollfd ufds[2];
     ufds[0].fd = socket_fd;
@@ -155,6 +157,21 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
 
       rv = poll(ufds, 2, -1);
       if(rv <= 0) break;
+
+
+      //fast retransmit
+      if (count >= 2) {
+        for (i = 0; i < WINDOW_SIZE; i++) {
+          if(sender_buffer[i] != NULL && pkt_get_seqnum(sender_buffer[i]) == lastack){
+
+            pkt_encode(sender_buffer[i], buffer1, &len);
+            sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
+            memset(buffer1, 0, MAX_PACKET_SIZE);
+            len = MAX_PACKET_SIZE;
+            count = 0;
+          }
+        }
+      }
 
       //réenvoyer
       if (sender_buffer_size < WINDOW_SIZE) {
@@ -185,6 +202,9 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
         memset(buffer1, 0, MAX_PACKET_SIZE);
         //ack attendu.
         if (status == PKT_OK && pkt_get_type(ack) == PTYPE_ACK) {
+          if(lastack == pkt_get_seqnum(ack)) count++;
+          lastack = pkt_get_seqnum(ack);
+          printf("count : %d, lastack : %d, seqnum : %u \n", count, lastack, seqnum );
           receiver_buffer_size = pkt_get_window(ack);
           //TODO : CHANGER CONDITION SEQNUM
           for (i = 0; i < WINDOW_SIZE; i++) {
