@@ -160,12 +160,13 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
 
 
       //fast retransmit
-      if (count >= 2) {
+      if (count >= 3) {
         for (i = 0; i < WINDOW_SIZE; i++) {
           if(sender_buffer[i] != NULL && pkt_get_seqnum(sender_buffer[i]) == lastack){
 
             pkt_encode(sender_buffer[i], buffer1, &len);
             sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
+            printf("PKT RESENT fastret:%u\n",pkt_get_seqnum(sender_buffer[i]) );
             memset(buffer1, 0, MAX_PACKET_SIZE);
             len = MAX_PACKET_SIZE;
             count = 0;
@@ -180,11 +181,15 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
         stamp = tm->tm_sec;
 
         for (i = 0; i < WINDOW_SIZE; i++) {
-          if(sender_buffer[i] != NULL && pkt_get_seqnum(sender_buffer[i]) <= ((seqnum  + sender_buffer_size) % (WINDOW_SIZE - 1))){
+          if (sender_buffer[i] != NULL) {
+
+            printf("%u > %u && %u <= %u \n", pkt_get_seqnum(ack), pkt_get_seqnum(sender_buffer[i]) ,pkt_get_seqnum(ack), seqnum);
             //RTT 3sec
-            if ( difftime(pkt_get_timestamp(sender_buffer[i]), stamp) < -2.0 ) {
+            printf("difftime pkt stored & now : %f\n", difftime(pkt_get_timestamp(sender_buffer[i]), stamp) );
+            if ( difftime(pkt_get_timestamp(sender_buffer[i]), stamp) < -2.0 && pkt_get_seqnum(sender_buffer[i]) < seqnum  ) {
               pkt_encode(sender_buffer[i], buffer1, &len);
               sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
+              printf("PKT RESENT difftime:%u\n",pkt_get_seqnum(sender_buffer[i]) );
               memset(buffer1, 0, MAX_PACKET_SIZE);
               len = MAX_PACKET_SIZE;
             }
@@ -200,6 +205,7 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
 
         status = pkt_decode(buffer1, size, ack);
         memset(buffer1, 0, MAX_PACKET_SIZE);
+        printf("RECEIVED ACK %u\n", pkt_get_seqnum(ack));
         //ack attendu.
         if (status == PKT_OK && pkt_get_type(ack) == PTYPE_ACK) {
           if(lastack == pkt_get_seqnum(ack)) count++;
@@ -210,13 +216,14 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
           for (i = 0; i < WINDOW_SIZE; i++) {
             if (sender_buffer[i] != NULL) {
               if (pkt_get_seqnum(ack) > pkt_get_seqnum(sender_buffer[i]) && pkt_get_seqnum(ack) <=  seqnum) {
-                printf("SEQNUM ACK : %d\n", pkt_get_seqnum(ack) );
+                printf("SEQNUM ACKED : %d\n", pkt_get_seqnum(sender_buffer[i]));
                 pkt_del(sender_buffer[i]);
                 sender_buffer[i] = NULL;
                 sender_buffer_size ++;
               }
             }
           }
+          printf("\n");
         }// fin ACK
 
 
@@ -224,7 +231,7 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
 
       //on lit sur le file_d, données à envoyer
       if (ufds[1].revents & POLLIN) {
-        if(sender_buffer_size > 0 && receiver_buffer_size > 0){
+        if(seqnum < lastack + sender_buffer_size){
           size = read(file_d, buffer2, MAX_PAYLOAD_SIZE);
           if(size <= 0) break;
           pkt = pkt_new();
@@ -242,9 +249,14 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
 
           pkt_encode(pkt, buffer1, &len);
           sendto(socket_fd, buffer1, len, 0, (struct sockaddr *) dest, sizeof(struct sockaddr_in6));
-
-          sender_buffer[(seqnum % (WINDOW_SIZE - 1))] = pkt;
-          seqnum = inc_seqnum(seqnum);
+          printf("PKT SENT :%u\n",seqnum );
+          for ( i = 0; i < WINDOW_SIZE; i++) {
+            if (sender_buffer[i] == NULL) {
+              sender_buffer[i] = pkt;
+              seqnum = inc_seqnum(seqnum);
+              break;
+            }
+          }
 
           memset(buffer1, 0, MAX_PACKET_SIZE);
           memset(buffer2, 0, MAX_PAYLOAD_SIZE);

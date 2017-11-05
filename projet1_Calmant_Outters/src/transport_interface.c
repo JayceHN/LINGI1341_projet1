@@ -168,7 +168,7 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
    memset(buffer, 0, MAX_PACKET_SIZE);
 
    int size = 0;
-   uint8_t seqnum = 1;
+   uint8_t seqnum = 0;
 
    int receiver_fd;
    socklen_t size_addr = sizeof(struct sockaddr_in6);
@@ -190,6 +190,37 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
    while(42){
      rv = poll(ufds, 1, 5000);
      if(rv <= 0) break;
+
+     /*
+     if(packet){
+       // on regarde s'il y a d'autres pkt valide
+       for (i = 0; i < WINDOW_SIZE; i++) {
+         if (receiver_buffer[i] != NULL && pkt_get_seqnum(receiver_buffer[i]) == seqnum){
+           size = write(receiver_fd, pkt_get_payload(packet), pkt_get_length(packet));
+
+           if(size < 0) fprintf(stderr, "Impossible d'écrire les données\n");
+           if(size == 0) fprintf(stderr, "0 bytes écris \n");
+
+           pkt_del(receiver_buffer[i]);
+           receiver_buffer[i] = NULL;
+           window ++;
+           seqnum = inc_seqnum(seqnum);
+
+           i=0;
+         }
+       } //end for check
+
+       //prépare l'ack
+       ack = pkt_new();
+       pkt_set_type(ack, PTYPE_ACK);
+       pkt_set_window(ack, window);
+       pkt_set_seqnum(ack, seqnum);
+       pkt_encode(ack, buffer, &len);
+       len = MAX_PAYLOAD_SIZE;
+       sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
+       pkt_del(ack);
+     }
+*/
     //data on socket
      if (ufds[0].revents & POLLIN) {
        size = recvfrom(sfd, buffer, MAX_PACKET_SIZE, 0,(struct sockaddr *) src, &size_addr);
@@ -201,36 +232,36 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
        code = pkt_decode(buffer, size, packet);
        memset(buffer, 0, len);
 
-       fprintf(stderr, " Packet type : %u\n", pkt_get_type(packet));
-       fprintf(stderr, " Packet TR : %u\n", pkt_get_tr(packet));
        fprintf(stderr, " Packet window : %u\n", pkt_get_window(packet));
        fprintf(stderr, " Packet seqnum : %u\n", pkt_get_seqnum(packet));
-       fprintf(stderr, " Packet length : %u\n", pkt_get_length(packet));
-       fprintf(stderr, " Packet code : %d\n", code);
 
        //pkt ok et seqnum non attendu
        if (code == PKT_OK && pkt_get_seqnum(packet) != seqnum && pkt_get_type(packet) == PTYPE_DATA) {
-         if(pkt_get_seqnum(packet) <= ((seqnum  + window) % (WINDOW_SIZE - 1)) && pkt_get_seqnum(packet) > seqnum ){
+         if(pkt_get_seqnum(packet) < ((int)seqnum  + (int)window) && pkt_get_seqnum(packet) > seqnum){
+           printf("%u < %u && %u > %u \n", pkt_get_seqnum(packet), (seqnum  + window) ,pkt_get_seqnum(packet), seqnum);
            for (i = 0; i < WINDOW_SIZE; i++) {
-             if (receiver_buffer[i] != NULL && pkt_get_seqnum(receiver_buffer[i]) == seqnum) {
+             if(receiver_buffer[i] != NULL && pkt_get_seqnum(receiver_buffer[i]) == pkt_get_seqnum(packet)){
                break;
              }
              if(receiver_buffer[i] == NULL){
                // on le stock
                receiver_buffer[i] = packet;
+               printf("SEQNUM PKT STORED : %u\n", pkt_get_seqnum(receiver_buffer[i]) );
                window --;
                break;
              }
            }
          }
+         printf("ACK SENT : %u\n", seqnum);
+         printf("\n");
          ack = pkt_new();
          pkt_set_type(ack, PTYPE_ACK);
          pkt_set_window(ack, window);
          pkt_set_seqnum(ack, seqnum);
          pkt_encode(ack, buffer, &len);
          len = MAX_PAYLOAD_SIZE;
-
          sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
+         memset(buffer, 0, MAX_PAYLOAD_SIZE);
          pkt_del(ack);
        } // end if(pkt_get_seqnum(packet) != seqnum) et dans le range
 
@@ -240,7 +271,6 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
            //écris sur le fd
           size = write(receiver_fd, pkt_get_payload(packet), pkt_get_length(packet));
           pkt_del(packet);
-          fprintf(stderr, "\n");
 
           if(size < 0){
             fprintf(stderr, "[DEBUG] errno %d from write\n", errno);
@@ -249,21 +279,10 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
           }
           if(size == 0) fprintf(stderr, "0 bytes écris \n");
 
-          //prépare l'ack
-          ack = pkt_new();
-          pkt_set_type(ack, PTYPE_ACK);
-          pkt_set_window(ack, window);
-          pkt_set_seqnum(ack, seqnum);
-          pkt_encode(ack, buffer, &len);
-          len = MAX_PAYLOAD_SIZE;
-
-          sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
-
            // on regarde s'il y a d'autres pkt valide
           for (i = 0; i < WINDOW_SIZE; i++) {
             if (receiver_buffer[i] != NULL && pkt_get_seqnum(receiver_buffer[i]) == seqnum){
-              size = write(receiver_fd, pkt_get_payload(packet), pkt_get_length(packet));
-
+              size = write(receiver_fd, pkt_get_payload(receiver_buffer[i]), pkt_get_length(receiver_buffer[i]));
               if(size < 0) fprintf(stderr, "Impossible d'écrire les données\n");
               if(size == 0) fprintf(stderr, "0 bytes écris \n");
 
@@ -271,10 +290,21 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
               receiver_buffer[i] = NULL;
               window ++;
               seqnum = inc_seqnum(seqnum);
-
               i=0;
             }
           } //end for check
+          printf("ACK SENT : %u\n", seqnum);
+          printf("\n");
+          //prépare l'ack
+          ack = pkt_new();
+          pkt_set_type(ack, PTYPE_ACK);
+          pkt_set_window(ack, window);
+          pkt_set_seqnum(ack, seqnum);
+          pkt_encode(ack, buffer, &len);
+          len = MAX_PAYLOAD_SIZE;
+          sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
+          memset(buffer, 0, MAX_PAYLOAD_SIZE);
+
           pkt_del(ack);
       } //end elseif(pkt_get_seqnum(packet) == seqnum)
 
@@ -293,6 +323,8 @@ void receiver_loop(int sfd, struct sockaddr_in6 *src, const char *fname){
         len = MAX_PAYLOAD_SIZE;
 
         sendto(sfd, buffer, len, 0, (struct sockaddr *) src, sizeof(struct sockaddr_in6));
+        memset(buffer, 0, MAX_PAYLOAD_SIZE);
+
         pkt_del(ack);
       } // end   else if (code != PKT_OK)
 
