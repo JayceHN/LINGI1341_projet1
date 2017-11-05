@@ -194,7 +194,6 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
       if (status == PKT_OK && pkt_get_type(ack) == PTYPE_ACK) {
         if(lastack == pkt_get_seqnum(ack)) count++;
         lastack = pkt_get_seqnum(ack);
-        receiver_buffer_size = pkt_get_window(ack);
         //TODO : CHANGER CONDITION SEQNUM
         for (i = 0; i < WINDOW_SIZE; i++) {
           if (sender_buffer[i] != NULL) {
