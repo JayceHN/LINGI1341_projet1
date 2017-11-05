@@ -131,7 +131,6 @@ int read_write_loop(int socket_fd, int file_d,  struct sockaddr_in6 *dest){
   for(i = 0 ; i < WINDOW_SIZE ; i++){
     sender_buffer[i] = NULL;
   }
-  int receiver_buffer_size = 1;
   uint8_t sender_buffer_size = WINDOW_SIZE;
 
   int lastack = 0 ;
